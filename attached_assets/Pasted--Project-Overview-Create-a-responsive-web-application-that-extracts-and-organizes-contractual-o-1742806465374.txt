@@ -1,0 +1,410 @@
+
+## Project Overview
+Create a responsive web application that extracts and organizes contractual obligations from uploaded legal documents. The application should allow users to upload contracts in various formats (PDF, DOCX, TXT), automatically identify and extract key obligations, categorize them by type, assign responsible parties, and present the information in a structured, searchable format. The application should feature a clean, modern UI with intuitive navigation and be optimized for both desktop and mobile devices.
+
+## Technical Requirements
+- **Frontend**: React.js with Material UI for clean component design
+- **Backend**: Node.js with Express for API and document processing
+- **Database**: MongoDB for flexible document storage
+- **Document Processing**: PDF.js for PDF parsing, mammoth.js for DOCX processing
+- **AI/ML**: Anthropic API (Claude) for intelligent contract interpretation and obligation extraction
+- **Hosting**: Replit (with option to deploy elsewhere later)
+
+## Core Features
+1. Document upload system supporting multiple file formats (PDF, DOCX, TXT) with drag-and-drop functionality and progress indication
+2. Anthropic API integration:
+- Text extraction from documents sent to Anthropic's Claude model
+- Specialized prompting system to identify contractual obligations
+- AI-powered identification and categorization of:
+- Payment terms and deadlines
+- Delivery requirements and timelines
+- Reporting obligations
+- Compliance requirements
+- Termination conditions
+- Renewal clauses
+- Confidence scoring for extracted obligations
+- Responsible party attribution
+3. Interactive obligation management dashboard with:
+- Filtering by obligation type, due date, and responsible party
+- Ability to manually edit/refine AI-extracted obligations
+- Option to assign responsible parties and set reminders
+- Calendar view for deadline visualization
+4. Export functionality for extracted obligations (CSV, PDF, JSON formats)
+5. Document storage system with version control for contract revisions
+6. Responsive design that works well on desktop, tablet, and mobile devices
+
+## Design Guidelines
+Brand Overview
+EnTrak is a modern energy tracking and management platform that helps businesses monitor, analyze, and optimize their energy consumption. The brand identity reflects reliability, innovation, and sustainability.
+
+Color Palette
+Primary Colors
+Deep Blue (#0F2B46): Used for headers, navigation, and key UI elements
+Electric Green (#26E07F): Primary accent color, used for CTAs, highlights, and interactive elements
+White (#FFFFFF): Background color and text on dark backgrounds
+Secondary Colors
+Light Blue (#E6F0F5): Used for backgrounds, cards, and secondary elements
+Medium Blue (#1E4265): Used for secondary buttons and supporting elements
+Dark Gray (#333333): Used for body text and secondary information
+Typography
+Headings
+Font Family: Montserrat (Sans-serif)
+Weights: Bold (700) for primary headings, Semibold (600) for secondary headings
+Sizes:
+H1: 48px/3rem (desktop), 36px/2.25rem (mobile)
+H2: 36px/2.25rem (desktop), 28px/1.75rem (mobile)
+H3: 24px/1.5rem (desktop), 20px/1.25rem (mobile)
+H4: 20px/1.25rem (desktop), 18px/1.125rem (mobile)
+Body Text
+Font Family: Open Sans (Sans-serif)
+Weights: Regular (400) for body text, Semibold (600) for emphasis
+Sizes:
+Body: 16px/1rem (desktop), 16px/1rem (mobile)
+Small: 14px/0.875rem (desktop and mobile)
+X-Small: 12px/0.75rem (desktop and mobile)
+Line Height: 1.5 for body text, 1.3 for headings
+UI Elements
+Buttons
+Primary Button
+Background: Electric Green (#26E07F)
+Text: White (#FFFFFF)
+Border Radius: 6px
+Padding: 12px 24px
+Font: Open Sans Semibold, 16px
+Hover state: Slight darkening of the green (#22C870)
+Secondary Button
+Background: Medium Blue (#1E4265)
+Text: White (#FFFFFF)
+Border Radius: 6px
+Padding: 12px 24px
+Font: Open Sans Semibold, 16px
+Hover state: Slight darkening of the blue (#193857)
+Text Button
+Text: Electric Green (#26E07F)
+No background
+Font: Open Sans Semibold, 16px
+Hover state: Underline
+Cards
+Background: White (#FFFFFF)
+Border Radius: 8px
+Box Shadow: 0px 4px 20px rgba(0, 0, 0, 0.1)
+Padding: 24px
+Forms
+Input fields:
+Border: 1px solid #D9D9D9
+Border Radius: 6px
+Padding: 12px 16px
+Focus state: Border color changes to Electric Green (#26E07F)
+Layout
+Grid System
+12-column grid system
+Desktop container width: 1200px max
+Tablet breakpoint: 768px
+Mobile breakpoint: 480px
+Spacing
+Base unit: 8px
+Common spacing values:
+XS: 8px (0.5rem)
+S: 16px (1rem)
+M: 24px (1.5rem)
+L: 32px (2rem)
+XL: 48px (3rem)
+XXL: 64px (4rem)
+Imagery & Graphics
+Photography
+Style: Clean, professional images showing energy management, sustainable businesses, and technology
+Treatment: Natural colors with slight increase in contrast and clarity
+Subject matter: Office environments, energy systems, professionals using the EnTrak platform
+Icons
+Style: Outlined, modern icons with 2px stroke
+Color: Primary Deep Blue (#0F2B46) or Electric Green (#26E07F) depending on context
+Size: 24px standard size, scaling appropriately for different contexts
+Data Visualization
+Primary colors from brand palette
+Clean, minimal design with focus on readability
+Consistent labeling and legends
+Use of Electric Green for highlighting important data points
+Animation & Interaction
+Transitions
+Duration: 0.2-0.3 seconds
+Easing: Ease-out for most transitions
+Hover effects: Subtle scaling (1.02-1.05) for clickable elements
+Page Loading
+Minimal loading animations
+Progressive content appearance
+Avoid flashy animations that distract from content
+Voice & Tone
+Brand Voice
+Professional yet approachable
+Clear and concise
+Solution-oriented
+Forward-thinking
+Content Guidelines
+Focus on benefits rather than features
+Use active voice
+Keep sentences short and direct
+Avoid technical jargon unless necessary
+Address the reader directly using "you"
+Highlight sustainability and efficiency
+Accessibility
+Contrast
+Maintain WCAG AA standard minimum (4.5:1 for normal text, 3:1 for large text)
+Ensure text is readable against all backgrounds
+Interactive Elements
+All interactive elements must have hover/focus states
+Form fields must have proper labels
+Use ARIA attributes where appropriate
+Responsive Design
+All pages must be fully responsive
+Critical functions must work on all device sizes
+Touch targets minimum size of 44x44px on mobile
+Code Standards
+CSS/SCSS
+Use BEM naming convention
+Mobile-first approach
+Minimize use of !important
+Comment complex code sections
+JavaScript
+Vanilla JS or React recommended
+Avoid jQuery when possible
+Comment complex functions
+Keep functions small and focused
+Performance
+Compress and optimize all images
+Lazy load non-critical content
+Minimize HTTP requests
+Set appropriate caching headers
+
+## Data Models
+Describe the key data entities and their relationships:
+```
+User {
+id: string,
+username: string,
+email: string,
+password: string (hashed),
+organization: string,
+role: string (admin/regular),
+created_at: timestamp,
+last_login: timestamp
+}
+
+Document {
+id: string,
+title: string,
+description: string,
+file_path: string,
+file_type: string,
+upload_date: timestamp,
+last_modified: timestamp,
+version: number,
+user_id: string (reference to User),
+extracted: boolean,
+extraction_date: timestamp
+}
+
+Obligation {
+id: string,
+document_id: string (reference to Document),
+text: string,
+type: string (payment/delivery/reporting/compliance/renewal/termination/other),
+start_date: date,
+due_date: date,
+responsible_party: string,
+status: string (pending/completed/overdue),
+priority: string (high/medium/low),
+confidence_score: number (extraction confidence),
+original_text: string (exact text from document),
+page_number: number,
+created_at: timestamp,
+last_modified: timestamp,
+created_by: string (reference to User),
+modified_by: string (reference to User)
+}
+
+Reminder {
+id: string,
+obligation_id: string (reference to Obligation),
+user_id: string (reference to User),
+reminder_date: date,
+notification_method: string (email/in-app/both),
+message: string,
+active: boolean
+}
+```
+
+## API Endpoints
+Outline the key API endpoints:
+
+### Documents
+- `POST /api/documents` - Upload new document
+- `GET /api/documents` - List all documents
+- `GET /api/documents/:id` - Get specific document details
+- `PUT /api/documents/:id` - Update document metadata
+- `DELETE /api/documents/:id` - Delete document
+- `POST /api/documents/:id/extract` - Trigger Anthropic API obligation extraction for document
+- `GET /api/documents/:id/download` - Download original document
+- `POST /api/documents/:id/version` - Upload new version of document
+
+### Anthropic AI Integration
+- `POST /api/ai/extract` - Send document text to Anthropic API for extraction
+- `POST /api/ai/analyze` - Send specific text for detailed analysis
+- `GET /api/ai/status` - Check Anthropic API connection status
+- `GET /api/ai/usage` - Get API usage statistics
+
+### Obligations
+- `GET /api/obligations` - List all obligations with filter options
+- `GET /api/obligations/:id` - Get specific obligation details
+- `PUT /api/obligations/:id` - Update obligation
+- `DELETE /api/obligations/:id` - Delete obligation
+- `POST /api/obligations/batch` - Create multiple obligations
+- `GET /api/documents/:id/obligations` - Get all obligations for specific document
+
+### Reminders
+- `POST /api/reminders` - Create reminder
+- `GET /api/reminders` - List all reminders
+- `GET /api/reminders/:id` - Get specific reminder
+- `PUT /api/reminders/:id` - Update reminder
+- `DELETE /api/reminders/:id` - Delete reminder
+
+### Analytics
+- `GET /api/analytics/obligations` - Get obligation analytics (counts by type, status)
+- `GET /api/analytics/deadlines` - Get upcoming deadlines
+- `GET /api/analytics/documents` - Get document processing statistics
+- `GET /api/analytics/ai` - Get AI extraction performance metrics
+
+## Development Milestones
+1. Project setup and basic framework implementation
+- Initialize React frontend and Express backend
+- Set up MongoDB connection
+- Configure file upload storage
+
+2. Authentication system
+- User registration and login functionality
+- JWT implementation
+- Role-based access control
+
+3. Document management system
+- File upload interface with drag-and-drop
+- Document storage and retrieval
+- Basic document viewer
+
+4. Anthropic API integration
+- Secure API key management
+- Text extraction from uploaded documents
+- Claude model prompt engineering for optimal obligation extraction
+- Response parsing and structuring
+
+5. Obligation extraction system
+- Development of specialized prompts for Claude
+- Obligation identification and classification logic
+- Entity recognition for dates, parties, and amounts
+- Confidence scoring system
+
+6. Obligation management dashboard
+- CRUD operations for obligations
+- Filtering and sorting functionality
+- Calendar and list views
+
+7. Reminder and notification system
+- Reminder creation interface
+- Email notification setup
+
+8. Export functionality
+- CSV export option
+- Report generation
+
+9. UI/UX refinement
+- Responsive design implementation
+- Accessibility improvements
+- User feedback incorporation
+
+10. Testing and bug fixes
+- Unit and integration testing
+- User acceptance testing
+- Performance optimization
+
+11. Deployment and documentation
+- Deployment to Replit
+- User documentation
+- API documentation
+
+## Additional Requirements
+- Error handling and validation
+- Comprehensive form validation
+- Graceful error handling for document processing failures
+- Informative error messages for users
+- Fallback mechanisms when Anthropic API is unavailable
+
+- Security measures
+- Secure storage of Anthropic API keys using environment variables
+- Data encryption for sensitive contract information
+- Rate limiting for API endpoints
+- CSRF protection
+- Regular security audits
+
+- Performance optimization
+- Document processing queue for handling large files
+- Caching strategies for frequently accessed data
+- Pagination for large datasets
+- Lazy loading for UI components
+- Optimized Anthropic API usage to minimize token consumption
+
+- Accessibility
+- WCAG 2.1 AA compliance
+- Keyboard navigation support
+- Screen reader compatibility
+- High contrast mode option
+
+- Internationalization
+- Support for multiple languages (initially English)
+- Date format localization
+
+- Analytics and logging
+- User activity tracking
+- Document processing metrics
+- Anthropic API usage monitoring
+- Error logging and monitoring
+- Performance monitoring
+
+- Documentation
+- Comprehensive README
+- API documentation with Swagger/OpenAPI
+- User guide and tutorials
+- Developer documentation for extension
+
+## Stretch Goals
+Features that would be nice to have but aren't essential for the MVP:
+
+1. Advanced Anthropic AI capabilities
+- Fine-tuning or specialized prompt templates for different contract types
+- Automatic risk assessment using AI analysis
+- Comparative analysis between contract versions
+- Compliance validation against legal requirements or internal policies
+- Extracting and analyzing complex conditional obligations
+
+2. Collaboration features
+- Real-time collaborative editing of extracted obligations
+- Comment and discussion threads on specific obligations
+- Role-based permission system for team collaboration
+- Activity feed and audit history
+
+3. Integration capabilities
+- Calendar integration (Google Calendar, Outlook) for deadline reminders
+- CRM integration for linking contracts to clients/deals
+- Document management system integrations (SharePoint, Google Drive)
+- Electronic signature integration
+- Legal research database integration
+
+4. Advanced analytics and reporting
+- Customizable dashboard for obligation metrics
+- Risk assessment scoring for contracts
+- Compliance tracking and reporting
+- Historical performance analysis
+- AI-generated contract summary and recommendations
+
+5. Mobile application
+- Native mobile app for iOS and Android
+- Push notifications for upcoming deadlines
+- Offline access to key contract information
+- Mobile document scanning capability
