@@ -24,6 +24,8 @@ export interface Obligation {
   priority: 'high' | 'medium' | 'low';
   confidence_score?: number;
   original_text?: string;
+  clause_number?: string;
+  section_name?: string;
   page_number?: number;
   created_at: string;
   last_modified: string;

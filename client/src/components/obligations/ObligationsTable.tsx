@@ -136,6 +136,13 @@ const ObligationsTable: React.FC<ObligationsTableProps> = ({
                     <div className="text-sm font-medium text-gray-900">{obligation.text}</div>
                     <div className="text-sm text-gray-500">
                       {obligation.document?.title || `Document #${obligation.document_id}`}
+                      {(obligation.clause_number || obligation.section_name) && (
+                        <span className="ml-1">
+                          {obligation.clause_number && `| Clause ${obligation.clause_number}`}
+                          {obligation.section_name && obligation.clause_number && ' - '}
+                          {obligation.section_name && `${obligation.section_name}`}
+                        </span>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell className="whitespace-nowrap">

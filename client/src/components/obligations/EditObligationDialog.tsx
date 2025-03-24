@@ -44,6 +44,8 @@ const EditObligationDialog: React.FC<EditObligationDialogProps> = ({
   const [responsibleParty, setResponsibleParty] = useState(obligation.responsible_party || 'not_assigned');
   const [priority, setPriority] = useState(obligation.priority);
   const [notes, setNotes] = useState(obligation.original_text || '');
+  const [clauseNumber, setClauseNumber] = useState(obligation.clause_number || '');
+  const [sectionName, setSectionName] = useState(obligation.section_name || '');
   const [isSaving, setIsSaving] = useState(false);
   
   const handleSubmit = (e: React.FormEvent) => {
@@ -59,6 +61,8 @@ const EditObligationDialog: React.FC<EditObligationDialogProps> = ({
       responsible_party: responsibleParty === 'not_assigned' ? undefined : responsibleParty,
       priority: priority as any,
       original_text: notes || undefined,
+      clause_number: clauseNumber || undefined,
+      section_name: sectionName || undefined,
       modified_by: 1 // Default user ID
     };
     
@@ -172,6 +176,32 @@ const EditObligationDialog: React.FC<EditObligationDialogProps> = ({
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            
+            <div>
+              <Label htmlFor="obligation-clause" className="block text-sm font-semibold mb-2">
+                Clause Number
+              </Label>
+              <Input
+                id="obligation-clause"
+                value={clauseNumber}
+                onChange={(e) => setClauseNumber(e.target.value)}
+                placeholder="e.g., 5.2.1"
+                className="w-full border border-gray-300 rounded-md px-4 py-2 focus:border-[#26E07F] focus:ring focus:ring-[#26E07F] focus:ring-opacity-50"
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="obligation-section" className="block text-sm font-semibold mb-2">
+                Section Name
+              </Label>
+              <Input
+                id="obligation-section"
+                value={sectionName}
+                onChange={(e) => setSectionName(e.target.value)}
+                placeholder="e.g., Termination Rights"
+                className="w-full border border-gray-300 rounded-md px-4 py-2 focus:border-[#26E07F] focus:ring focus:ring-[#26E07F] focus:ring-opacity-50"
+              />
             </div>
             
             <div className="md:col-span-2">
