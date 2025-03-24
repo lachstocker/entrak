@@ -20,8 +20,8 @@ interface NavItemProps {
 const NavItem: React.FC<NavItemProps> = ({ href, icon, children, isActive }) => {
   return (
     <li className={`px-6 py-3 ${isActive ? 'bg-[#1E4265]' : 'hover:bg-[#193857] transition-colors'}`}>
-      <Link href={href}>
-        <div className="flex items-center font-semibold cursor-pointer">
+      <Link href={href} className="block">
+        <div className="flex items-center font-semibold cursor-pointer text-white">
           <span className="mr-3">{icon}</span>
           {children}
         </div>
