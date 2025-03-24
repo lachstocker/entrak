@@ -41,7 +41,7 @@ const EditObligationDialog: React.FC<EditObligationDialogProps> = ({
       ? new Date(obligation.due_date).toISOString().split('T')[0] 
       : ''
   );
-  const [responsibleParty, setResponsibleParty] = useState(obligation.responsible_party || '');
+  const [responsibleParty, setResponsibleParty] = useState(obligation.responsible_party || 'not_assigned');
   const [priority, setPriority] = useState(obligation.priority);
   const [notes, setNotes] = useState(obligation.original_text || '');
   const [isSaving, setIsSaving] = useState(false);
@@ -56,7 +56,7 @@ const EditObligationDialog: React.FC<EditObligationDialogProps> = ({
       type: type as any,
       status: status as any,
       due_date: dueDate ? new Date(dueDate).toISOString() : undefined,
-      responsible_party: responsibleParty || undefined,
+      responsible_party: responsibleParty === 'not_assigned' ? undefined : responsibleParty,
       priority: priority as any,
       original_text: notes || undefined,
       modified_by: 1 // Default user ID
@@ -146,7 +146,7 @@ const EditObligationDialog: React.FC<EditObligationDialogProps> = ({
                   <SelectValue placeholder="Select responsible party" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Not Assigned</SelectItem>
+                  <SelectItem value="not_assigned">Not Assigned</SelectItem>
                   {RESPONSIBLE_PARTIES.map(party => (
                     <SelectItem key={party.value} value={party.value}>
                       {party.label}
