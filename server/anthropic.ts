@@ -219,13 +219,24 @@ export async function extractObligations(text: string, documentId: number): Prom
       You are an expert legal analyst specializing in contract obligation extraction. 
       Your task is to identify and extract key contractual obligations from the provided document.
       
+      IMPORTANT: You MUST ONLY use the EXACT obligation types from this list:
+      - payment
+      - delivery
+      - reporting
+      - compliance
+      - renewal
+      - termination
+      - other
+      
+      Use "other" for any obligation type that doesn't fit the above categories precisely.
+      
       For each obligation, extract:
       1. Text - A one-sentence summary of the obligation (make this concise and clear)
-      2. Type - Categorize as: payment, delivery, reporting, compliance, renewal, termination, or other
+      2. Type - MUST be one of: payment, delivery, reporting, compliance, renewal, termination, or other (EXACTLY as listed)
       3. Start date - When the obligation starts (if specified) in YYYY-MM-DD format
       4. Due date - When the obligation must be fulfilled (if specified) in YYYY-MM-DD format
       5. Responsible party - Who is responsible for fulfilling the obligation (if specified)
-      6. Priority - Classify as high, medium, or low based on importance, deadlines, and consequences
+      6. Priority - MUST be one of: high, medium, or low (EXACTLY as listed)
       7. Original text - The EXACT wording from the contract (copy the complete obligation text verbatim)
       8. Clause number - The specific clause number in the contract (if available, e.g., "Section 3.2.1" or "Clause 5")
       9. Section name - The name or title of the section containing this obligation (if available)
@@ -276,10 +287,20 @@ export async function extractObligations(text: string, documentId: number): Prom
     
     // Convert to InsertObligation objects
     return extractedData.obligations.map(obligation => {
+      // Validate and normalize the obligation type to match our schema's enum
+      const validTypes = ['payment', 'delivery', 'reporting', 'compliance', 'renewal', 'termination', 'other'];
+      let normalizedType = obligation.type.toLowerCase();
+      
+      // If the type isn't in our valid types list, map it to 'other'
+      if (!validTypes.includes(normalizedType)) {
+        console.warn(`Invalid obligation type "${obligation.type}" detected - mapping to "other"`);
+        normalizedType = 'other';
+      }
+      
       const insertObligation: InsertObligation = {
         document_id: documentId,
         text: obligation.text, // One sentence summary of the obligation
-        type: obligation.type as any,
+        type: normalizedType as any,
         original_text: obligation.original_text, // Exact wording from the contract
         confidence_score: obligation.confidence_score,
         priority: (obligation.priority || 'medium') as any,
@@ -368,12 +389,24 @@ export async function analyzeSpecificObligation(text: string): Promise<{
       max_tokens: 1000,
       system: `
         Analyze the provided text as a potential contractual obligation. 
+        
+        IMPORTANT: You MUST ONLY use the EXACT obligation types from this list:
+        - payment
+        - delivery
+        - reporting
+        - compliance
+        - renewal
+        - termination
+        - other
+        
+        Use "other" for any obligation type that doesn't fit the above categories precisely.
+        
         Extract and categorize it with the following fields:
-        - type: payment, delivery, reporting, compliance, renewal, termination, or other
+        - type: MUST be one of: payment, delivery, reporting, compliance, renewal, termination, or other (EXACTLY as listed)
         - start_date: when the obligation starts (YYYY-MM-DD format, if specified)
         - due_date: when it must be fulfilled (YYYY-MM-DD format, if specified)
         - responsible_party: who is responsible (if specified)
-        - priority: high, medium, or low based on importance and urgency
+        - priority: MUST be one of: high, medium, or low (EXACTLY as listed)
         - clause_number: the specific clause number in the contract (if available, e.g., "Section 3.2.1" or "Clause 5")
         - section_name: the name or title of the section containing this obligation (if available)
         - confidence_score: your confidence in this analysis (0-100)
@@ -423,6 +456,37 @@ export async function analyzeSpecificObligation(text: string): Promise<{
       } catch (error) {
         delete result.due_date;
       }
+    }
+    
+    // Validate and normalize obligation type
+    if (result.type) {
+      const validTypes = ['payment', 'delivery', 'reporting', 'compliance', 'renewal', 'termination', 'other'];
+      const normalizedType = result.type.toLowerCase();
+      
+      if (!validTypes.includes(normalizedType)) {
+        console.warn(`Invalid obligation type "${result.type}" detected in analysis - mapping to "other"`);
+        result.type = 'other';
+      } else {
+        result.type = normalizedType;
+      }
+    } else {
+      // Default to 'other' if type is missing
+      result.type = 'other';
+    }
+    
+    // Validate priority field
+    if (result.priority) {
+      const validPriorities = ['high', 'medium', 'low'];
+      const normalizedPriority = result.priority.toLowerCase();
+      
+      if (!validPriorities.includes(normalizedPriority)) {
+        result.priority = 'medium'; // Default to medium if invalid
+      } else {
+        result.priority = normalizedPriority;
+      }
+    } else {
+      // Default to 'medium' if priority is missing
+      result.priority = 'medium';
     }
     
     return result;
