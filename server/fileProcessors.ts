@@ -11,24 +11,39 @@ export async function extractTextFromPDF(filePath: string): Promise<string> {
     
     // Node.js environment
     if (typeof window === 'undefined') {
-      // For older versions of PDF.js
-      const data = new Uint8Array(fs.readFileSync(filePath));
-      const loadingTask = pdfjs.getDocument(data);
-      const pdf = await loadingTask.promise;
+      // Suppress the standard font warnings by configuring a dummy font provider
+      // This is just to avoid the warnings in the console, not to actually provide fonts
+      const pdfjsGlobal = pdfjs as any;
+      if (pdfjsGlobal.GlobalWorkerOptions) {
+        pdfjsGlobal.GlobalWorkerOptions.workerSrc = '';
+      }
       
+      // Disable font loading rather than trying to fix it - we just need the text content
+      const loadingTask = pdfjs.getDocument({
+        data: new Uint8Array(fs.readFileSync(filePath)),
+        disableFontFace: true,  // Disable font face loading
+        ignoreErrors: true,     // Continue even with non-critical errors
+      });
+      
+      const pdf = await loadingTask.promise;
       let textContent = '';
       
       // Iterate through each page
       for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const content = await page.getTextContent();
-        
-        // Extract text from the page
-        const pageText = content.items
-          .map((item: any) => item.str)
-          .join(' ');
-        
-        textContent += pageText + '\n\n';
+        try {
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          
+          // Extract text from the page
+          const pageText = content.items
+            .map((item: any) => item.str || '')
+            .join(' ');
+          
+          textContent += pageText + '\n\n';
+        } catch (pageError) {
+          console.warn(`Warning: Could not extract text from page ${i}:`, pageError);
+          textContent += `[Page ${i} extraction error]\n\n`;
+        }
       }
       
       return textContent;
