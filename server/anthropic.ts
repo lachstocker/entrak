@@ -316,8 +316,20 @@ export async function extractObligations(text: string, documentId: number): Prom
       
       return insertObligation;
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error extracting obligations:', error);
+    
+    // Check for rate limit errors specifically
+    if (error.status === 429) {
+      // Extract retry-after header if available
+      const retryAfter = error.headers && error.headers['retry-after'] 
+        ? parseInt(error.headers['retry-after'], 10) 
+        : 60; // Default to 60 seconds
+      
+      throw new Error(`RATE_LIMIT:${retryAfter}`);
+    }
+    
+    // Handle other types of errors
     throw new Error(`Failed to extract obligations: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
@@ -371,8 +383,20 @@ export async function analyzeSpecificObligation(text: string): Promise<{
     
     // Use our robust JSON parsing logic for single objects
     return safeJsonParseSimple(contentBlock.text);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error analyzing obligation:', error);
+    
+    // Check for rate limit errors specifically
+    if (error.status === 429) {
+      // Extract retry-after header if available
+      const retryAfter = error.headers && error.headers['retry-after'] 
+        ? parseInt(error.headers['retry-after'], 10) 
+        : 60; // Default to 60 seconds
+      
+      throw new Error(`RATE_LIMIT:${retryAfter}`);
+    }
+    
+    // Handle other types of errors
     throw new Error(`Failed to analyze obligation: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }

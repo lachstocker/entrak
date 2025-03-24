@@ -225,6 +225,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error('Error extracting obligations:', error);
+      
+      // Check for rate limit errors
+      if (error instanceof Error && error.message.startsWith('RATE_LIMIT:')) {
+        // Extract the retry seconds from the error message
+        const retrySeconds = parseInt(error.message.split(':')[1], 10) || 60;
+        const retryMinutes = Math.ceil(retrySeconds / 60);
+        
+        return res.status(429).json({
+          message: `API rate limit exceeded. Please try again in approximately ${retryMinutes} minute${retryMinutes > 1 ? 's' : ''}.`,
+          retryAfter: retrySeconds,
+          error: 'RATE_LIMIT'
+        });
+      }
+      
+      // Handle other errors
       res.status(500).json({ 
         message: 'Failed to extract obligations',
         error: error instanceof Error ? error.message : 'Unknown error'
@@ -334,6 +349,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error('Error analyzing text:', error);
+      
+      // Check for rate limit errors
+      if (error instanceof Error && error.message.startsWith('RATE_LIMIT:')) {
+        // Extract the retry seconds from the error message
+        const retrySeconds = parseInt(error.message.split(':')[1], 10) || 60;
+        const retryMinutes = Math.ceil(retrySeconds / 60);
+        
+        return res.status(429).json({
+          message: `API rate limit exceeded. Please try again in approximately ${retryMinutes} minute${retryMinutes > 1 ? 's' : ''}.`,
+          retryAfter: retrySeconds,
+          error: 'RATE_LIMIT'
+        });
+      }
+      
+      // Handle other errors
       res.status(500).json({ 
         message: 'Failed to analyze text',
         error: error instanceof Error ? error.message : 'Unknown error'
@@ -357,6 +387,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error('Error analyzing specific text:', error);
+      
+      // Check for rate limit errors
+      if (error instanceof Error && error.message.startsWith('RATE_LIMIT:')) {
+        // Extract the retry seconds from the error message
+        const retrySeconds = parseInt(error.message.split(':')[1], 10) || 60;
+        const retryMinutes = Math.ceil(retrySeconds / 60);
+        
+        return res.status(429).json({
+          message: `API rate limit exceeded. Please try again in approximately ${retryMinutes} minute${retryMinutes > 1 ? 's' : ''}.`,
+          retryAfter: retrySeconds,
+          error: 'RATE_LIMIT'
+        });
+      }
+      
+      // Handle other errors
       res.status(500).json({ 
         message: 'Failed to analyze text',
         error: error instanceof Error ? error.message : 'Unknown error'
