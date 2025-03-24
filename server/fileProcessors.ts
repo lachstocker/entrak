@@ -22,7 +22,6 @@ export async function extractTextFromPDF(filePath: string): Promise<string> {
       const loadingTask = pdfjs.getDocument({
         data: new Uint8Array(fs.readFileSync(filePath)),
         disableFontFace: true,  // Disable font face loading
-        ignoreErrors: true,     // Continue even with non-critical errors
       });
       
       const pdf = await loadingTask.promise;

@@ -339,7 +339,9 @@ export async function extractObligations(text: string, documentId: number): Prom
       }
       
       VERY IMPORTANT: Your response MUST be valid JSON. Do not include explanations or formatting before or after the JSON.
-      Extract at least 10-20 obligations when possible. Focus on clear, explicit obligations.
+      Be extremely thorough and extract ALL obligations from the document (aim for at least 30-50 when possible).
+      Focus on clear, explicit obligations but don't miss anything important.
+      Capture every contractual requirement, deadline, and responsibility.
       If dates are mentioned relatively (e.g., "within 30 days"), make your best estimate for an absolute date.
       Include only the JSON in your response, no other text.
     `;
@@ -348,7 +350,7 @@ export async function extractObligations(text: string, documentId: number): Prom
 
     const response = await anthropic.messages.create({
       model: 'claude-3-7-sonnet-20250219',
-      max_tokens: 8000,
+      max_tokens: 20000, // Increased max output tokens to 20,000
       system: systemPrompt,
       messages: [{ role: 'user', content: userMessage }],
     });
@@ -457,7 +459,7 @@ export async function analyzeSpecificObligation(text: string): Promise<{
   try {
     const response = await anthropic.messages.create({
       model: 'claude-3-7-sonnet-20250219',
-      max_tokens: 1000,
+      max_tokens: 8000, // Increased max output tokens to 8,000
       system: `
         Analyze the provided text as a potential contractual obligation.
         
