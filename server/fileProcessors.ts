@@ -11,9 +11,10 @@ export async function extractTextFromPDF(filePath: string): Promise<string> {
     
     // Node.js environment
     if (typeof window === 'undefined') {
-      // Set disableWorker to true for node environment
+      // For older versions of PDF.js
       const data = new Uint8Array(fs.readFileSync(filePath));
-      const pdf = await pdfjs.getDocument({ data, disableWorker: true }).promise;
+      const loadingTask = pdfjs.getDocument(data);
+      const pdf = await loadingTask.promise;
       
       let textContent = '';
       

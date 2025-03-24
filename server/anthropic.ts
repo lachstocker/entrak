@@ -89,8 +89,40 @@ export async function extractObligations(text: string, documentId: number): Prom
       responseContent = responseContent.replace(/```\n|\n```/g, '');
     }
     
-    // Parse the JSON response
-    const extractedData = JSON.parse(responseContent) as ExtractedObligationsResponse;
+    // Additional JSON cleanup
+    // Remove any text before the first { or after the last }
+    responseContent = responseContent.substring(
+      responseContent.indexOf('{'),
+      responseContent.lastIndexOf('}') + 1
+    );
+    
+    // Remove any trailing commas before closing brackets or braces (common JSON error)
+    responseContent = responseContent.replace(/,\s*}/g, '}').replace(/,\s*]/g, ']');
+    
+    // Remove any non-ASCII characters as they can cause parsing issues
+    responseContent = responseContent.replace(/[^\x00-\x7F]+/g, '');
+    
+    // Try to parse the JSON with error handling
+    let extractedData: ExtractedObligationsResponse;
+    
+    try {
+      extractedData = JSON.parse(responseContent) as ExtractedObligationsResponse;
+    } catch (error) {
+      console.error('JSON parse error:', error);
+      console.error('JSON content that failed to parse:', responseContent);
+      
+      // Fallback: Try to fix common JSON errors with a more aggressive approach
+      try {
+        // Replace any instances of unquoted property names
+        responseContent = responseContent.replace(/([{,]\s*)(\w+)(\s*:)/g, '$1"$2"$3');
+        
+        // Try to parse again
+        extractedData = JSON.parse(responseContent) as ExtractedObligationsResponse;
+      } catch (secondError) {
+        console.error('Secondary JSON parse error after cleanup:', secondError);
+        throw new Error('Failed to parse API response. The JSON structure was invalid.');
+      }
+    }
     
     // Convert to InsertObligation objects
     return extractedData.obligations.map(obligation => {
@@ -181,7 +213,38 @@ export async function analyzeSpecificObligation(text: string): Promise<{
       responseContent = responseContent.replace(/```\n|\n```/g, '');
     }
     
-    return JSON.parse(responseContent);
+    // Additional JSON cleanup
+    // Remove any text before the first { or after the last }
+    responseContent = responseContent.substring(
+      responseContent.indexOf('{'),
+      responseContent.lastIndexOf('}') + 1
+    );
+    
+    // Remove any trailing commas before closing brackets or braces (common JSON error)
+    responseContent = responseContent.replace(/,\s*}/g, '}').replace(/,\s*]/g, ']');
+    
+    // Remove any non-ASCII characters as they can cause parsing issues
+    responseContent = responseContent.replace(/[^\x00-\x7F]+/g, '');
+    
+    // Try to parse the JSON with error handling
+    try {
+      return JSON.parse(responseContent);
+    } catch (error) {
+      console.error('JSON parse error:', error);
+      console.error('JSON content that failed to parse:', responseContent);
+      
+      // Fallback: Try to fix common JSON errors with a more aggressive approach
+      try {
+        // Replace any instances of unquoted property names
+        responseContent = responseContent.replace(/([{,]\s*)(\w+)(\s*:)/g, '$1"$2"$3');
+        
+        // Try to parse again
+        return JSON.parse(responseContent);
+      } catch (secondError) {
+        console.error('Secondary JSON parse error after cleanup:', secondError);
+        throw new Error('Failed to parse API response. The JSON structure was invalid.');
+      }
+    }
   } catch (error) {
     console.error('Error analyzing obligation:', error);
     throw new Error(`Failed to analyze obligation: ${error instanceof Error ? error.message : 'Unknown error'}`);
