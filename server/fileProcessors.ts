@@ -1,36 +1,40 @@
-import * as pdfjs from 'pdfjs-dist';
+// Import pdfjs dynamically to avoid issues with different import styles
 import mammoth from 'mammoth';
 import fs from 'fs';
 import path from 'path';
 
-// Initialize PDF.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
-
 // Extract text from a PDF file
 export async function extractTextFromPDF(filePath: string): Promise<string> {
   try {
-    const data = new Uint8Array(fs.readFileSync(filePath));
+    // In this older version, Node.js doesn't handle this well, so let's import it dynamically
+    const pdfjs = await import('pdfjs-dist');
     
-    // Load the PDF document
-    const loadingTask = pdfjs.getDocument({ data });
-    const pdf = await loadingTask.promise;
-    
-    let textContent = '';
-    
-    // Iterate through each page
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const content = await page.getTextContent();
+    // Node.js environment
+    if (typeof window === 'undefined') {
+      // Set disableWorker to true for node environment
+      const data = new Uint8Array(fs.readFileSync(filePath));
+      const pdf = await pdfjs.getDocument({ data, disableWorker: true }).promise;
       
-      // Extract text from the page
-      const pageText = content.items
-        .map((item: any) => item.str)
-        .join(' ');
+      let textContent = '';
       
-      textContent += pageText + '\n\n';
+      // Iterate through each page
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        
+        // Extract text from the page
+        const pageText = content.items
+          .map((item: any) => item.str)
+          .join(' ');
+        
+        textContent += pageText + '\n\n';
+      }
+      
+      return textContent;
     }
     
-    return textContent;
+    // Browser environment (should not be reached in this app)
+    return 'PDF processing in browser not implemented';
   } catch (error) {
     console.error('Error extracting text from PDF:', error);
     throw new Error(`Failed to extract text from PDF: ${error instanceof Error ? error.message : 'Unknown error'}`);
