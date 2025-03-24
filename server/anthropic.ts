@@ -21,6 +21,188 @@ interface ExtractedObligationsResponse {
   }[];
 }
 
+// Helper function to safely parse JSON with multiple fallback methods
+function safeJsonParse(jsonString: string): ExtractedObligationsResponse {
+  console.log("Starting to parse JSON response from Anthropic");
+  
+  // First try: Handle markdown code blocks
+  let cleanJson = jsonString;
+  if (cleanJson.includes('```json')) {
+    cleanJson = cleanJson.replace(/```json\n|\n```/g, '');
+  } else if (cleanJson.includes('```')) {
+    cleanJson = cleanJson.replace(/```\n|\n```/g, '');
+  }
+  
+  // Extract only content between first { and last }
+  const firstBrace = cleanJson.indexOf('{');
+  const lastBrace = cleanJson.lastIndexOf('}');
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    cleanJson = cleanJson.substring(firstBrace, lastBrace + 1);
+  }
+  
+  // Fix common JSON syntax issues
+  cleanJson = cleanJson
+    // Remove trailing commas before closing brackets
+    .replace(/,(\s*[\]}])/g, '$1')
+    // Remove non-ASCII characters
+    .replace(/[^\x00-\x7F]+/g, '')
+    // Quote unquoted keys
+    .replace(/([{,]\s*)(\w+)(\s*:)/g, '$1"$2"$3')
+    // Fix mismatched quotes
+    .replace(/([{,][^{}:,]*?)"([^"]*?)'([^{}:,]*?:)/g, '$1"$2"$3')
+    .replace(/([{,][^{}:,]*?)'([^']*?)"([^{}:,]*?:)/g, '$1"$2"$3');
+    
+  try {
+    // First attempt: direct parsing
+    return JSON.parse(cleanJson) as ExtractedObligationsResponse;
+  } catch (error) {
+    console.log("First parsing attempt failed, trying alternative methods...");
+    
+    try {
+      // Second attempt: Manually extract obligations array pattern
+      const obligationsMatch = cleanJson.match(/"obligations"\s*:\s*\[([\s\S]*?)\](?=\s*\})/);
+      if (obligationsMatch && obligationsMatch[1]) {
+        const obligationsArrayRaw = obligationsMatch[1];
+        
+        // Try to extract individual obligations by pattern matching
+        const obligationObjects: any[] = [];
+        let currentObject = '';
+        let braceCount = 0;
+        let inObject = false;
+        
+        for (let i = 0; i < obligationsArrayRaw.length; i++) {
+          const char = obligationsArrayRaw[i];
+          
+          if (char === '{') {
+            inObject = true;
+            braceCount++;
+            currentObject += char;
+          } else if (char === '}') {
+            braceCount--;
+            currentObject += char;
+            
+            if (braceCount === 0 && inObject) {
+              try {
+                // Try to parse the individual obligation
+                const obligation = JSON.parse(currentObject);
+                obligationObjects.push(obligation);
+                currentObject = '';
+                inObject = false;
+              } catch (objError) {
+                // Skip this object if it can't be parsed
+                currentObject = '';
+                inObject = false;
+              }
+            }
+          } else if (inObject) {
+            currentObject += char;
+          }
+        }
+        
+        return { obligations: obligationObjects };
+      }
+      
+      throw new Error("No obligations array found");
+    } catch (secError) {
+      console.error("Second parsing attempt failed", secError);
+      
+      // Last resort: Try to use a regex-based approach to extract obligation objects
+      try {
+        const obligationMatches = cleanJson.match(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/g) || [];
+        const obligations = obligationMatches
+          .map(objStr => {
+            try {
+              // Try to fix and parse each potential obligation object
+              const fixedStr = objStr
+                .replace(/([{,]\s*)(\w+)(\s*:)/g, '$1"$2"$3')
+                .replace(/:\s*'([^']*)'/g, ':"$1"')
+                .replace(/,(\s*[\]}])/g, '$1');
+              return JSON.parse(fixedStr);
+            } catch (e) {
+              return null;
+            }
+          })
+          .filter(Boolean)
+          .filter(obj => obj.text && obj.type); // Must have at least these fields
+        
+        if (obligations.length > 0) {
+          return { obligations };
+        }
+        
+        throw new Error("Could not extract valid obligations");
+      } catch (finalError) {
+        console.error("All parsing attempts failed", finalError);
+        throw new Error('Failed to parse API response. The JSON structure was invalid.');
+      }
+    }
+  }
+}
+
+// Create a simpler version of the safeJsonParse function for single objects
+function safeJsonParseSimple(jsonString: string): any {
+  console.log("Starting to parse simple JSON response from Anthropic");
+  
+  // First try: Handle markdown code blocks
+  let cleanJson = jsonString;
+  if (cleanJson.includes('```json')) {
+    cleanJson = cleanJson.replace(/```json\n|\n```/g, '');
+  } else if (cleanJson.includes('```')) {
+    cleanJson = cleanJson.replace(/```\n|\n```/g, '');
+  }
+  
+  // Extract only content between first { and last }
+  const firstBrace = cleanJson.indexOf('{');
+  const lastBrace = cleanJson.lastIndexOf('}');
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    cleanJson = cleanJson.substring(firstBrace, lastBrace + 1);
+  }
+  
+  // Fix common JSON syntax issues
+  cleanJson = cleanJson
+    // Remove trailing commas before closing brackets
+    .replace(/,(\s*[\]}])/g, '$1')
+    // Remove non-ASCII characters
+    .replace(/[^\x00-\x7F]+/g, '')
+    // Quote unquoted keys
+    .replace(/([{,]\s*)(\w+)(\s*:)/g, '$1"$2"$3')
+    // Fix mismatched quotes
+    .replace(/([{,][^{}:,]*?)"([^"]*?)'([^{}:,]*?:)/g, '$1"$2"$3')
+    .replace(/([{,][^{}:,]*?)'([^']*?)"([^{}:,]*?:)/g, '$1"$2"$3');
+  
+  try {
+    // First attempt: direct parsing
+    return JSON.parse(cleanJson);
+  } catch (error) {
+    console.log("First parsing attempt failed, trying alternative methods...");
+    
+    // Last resort: Rebuild a minimal valid JSON object with the fields we need
+    try {
+      const typeMatch = cleanJson.match(/"type"\s*:\s*"([^"]*)"/);
+      const startDateMatch = cleanJson.match(/"start_date"\s*:\s*"([^"]*)"/);
+      const dueDateMatch = cleanJson.match(/"due_date"\s*:\s*"([^"]*)"/);
+      const responsiblePartyMatch = cleanJson.match(/"responsible_party"\s*:\s*"([^"]*)"/);
+      const priorityMatch = cleanJson.match(/"priority"\s*:\s*"([^"]*)"/);
+      const confidenceScoreMatch = cleanJson.match(/"confidence_score"\s*:\s*(\d+)/);
+      
+      // Construct a valid minimal object
+      const result: any = {
+        type: typeMatch ? typeMatch[1] : 'other',
+        confidence_score: confidenceScoreMatch ? parseInt(confidenceScoreMatch[1]) : 50
+      };
+      
+      if (startDateMatch) result.start_date = startDateMatch[1];
+      if (dueDateMatch) result.due_date = dueDateMatch[1];
+      if (responsiblePartyMatch) result.responsible_party = responsiblePartyMatch[1];
+      if (priorityMatch) result.priority = priorityMatch[1];
+      
+      return result;
+    } catch (finalError) {
+      console.error("All parsing attempts failed", finalError);
+      throw new Error('Failed to parse API response. The JSON structure was invalid.');
+    }
+  }
+}
+
 export async function extractObligations(text: string, documentId: number): Promise<InsertObligation[]> {
   if (!text || text.trim() === '') {
     throw new Error('No text provided for obligation extraction');
@@ -79,50 +261,8 @@ export async function extractObligations(text: string, documentId: number): Prom
       throw new Error('Unexpected response format: Not a text content block');
     }
     
-    let responseContent = contentBlock.text;
-    
-    // Clean up the response content to extract just the JSON
-    // Handle case where response is wrapped in markdown code blocks
-    if (responseContent.includes('```json')) {
-      responseContent = responseContent.replace(/```json\n|\n```/g, '');
-    } else if (responseContent.includes('```')) {
-      responseContent = responseContent.replace(/```\n|\n```/g, '');
-    }
-    
-    // Additional JSON cleanup
-    // Remove any text before the first { or after the last }
-    responseContent = responseContent.substring(
-      responseContent.indexOf('{'),
-      responseContent.lastIndexOf('}') + 1
-    );
-    
-    // Remove any trailing commas before closing brackets or braces (common JSON error)
-    responseContent = responseContent.replace(/,\s*}/g, '}').replace(/,\s*]/g, ']');
-    
-    // Remove any non-ASCII characters as they can cause parsing issues
-    responseContent = responseContent.replace(/[^\x00-\x7F]+/g, '');
-    
-    // Try to parse the JSON with error handling
-    let extractedData: ExtractedObligationsResponse;
-    
-    try {
-      extractedData = JSON.parse(responseContent) as ExtractedObligationsResponse;
-    } catch (error) {
-      console.error('JSON parse error:', error);
-      console.error('JSON content that failed to parse:', responseContent);
-      
-      // Fallback: Try to fix common JSON errors with a more aggressive approach
-      try {
-        // Replace any instances of unquoted property names
-        responseContent = responseContent.replace(/([{,]\s*)(\w+)(\s*:)/g, '$1"$2"$3');
-        
-        // Try to parse again
-        extractedData = JSON.parse(responseContent) as ExtractedObligationsResponse;
-      } catch (secondError) {
-        console.error('Secondary JSON parse error after cleanup:', secondError);
-        throw new Error('Failed to parse API response. The JSON structure was invalid.');
-      }
-    }
+    // Use our robust JSON parsing logic
+    const extractedData = safeJsonParse(contentBlock.text);
     
     // Convert to InsertObligation objects
     return extractedData.obligations.map(obligation => {
@@ -203,48 +343,8 @@ export async function analyzeSpecificObligation(text: string): Promise<{
       throw new Error('Unexpected response format: Not a text content block');
     }
     
-    let responseContent = contentBlock.text;
-    
-    // Clean up the response content to extract just the JSON
-    // Handle case where response is wrapped in markdown code blocks
-    if (responseContent.includes('```json')) {
-      responseContent = responseContent.replace(/```json\n|\n```/g, '');
-    } else if (responseContent.includes('```')) {
-      responseContent = responseContent.replace(/```\n|\n```/g, '');
-    }
-    
-    // Additional JSON cleanup
-    // Remove any text before the first { or after the last }
-    responseContent = responseContent.substring(
-      responseContent.indexOf('{'),
-      responseContent.lastIndexOf('}') + 1
-    );
-    
-    // Remove any trailing commas before closing brackets or braces (common JSON error)
-    responseContent = responseContent.replace(/,\s*}/g, '}').replace(/,\s*]/g, ']');
-    
-    // Remove any non-ASCII characters as they can cause parsing issues
-    responseContent = responseContent.replace(/[^\x00-\x7F]+/g, '');
-    
-    // Try to parse the JSON with error handling
-    try {
-      return JSON.parse(responseContent);
-    } catch (error) {
-      console.error('JSON parse error:', error);
-      console.error('JSON content that failed to parse:', responseContent);
-      
-      // Fallback: Try to fix common JSON errors with a more aggressive approach
-      try {
-        // Replace any instances of unquoted property names
-        responseContent = responseContent.replace(/([{,]\s*)(\w+)(\s*:)/g, '$1"$2"$3');
-        
-        // Try to parse again
-        return JSON.parse(responseContent);
-      } catch (secondError) {
-        console.error('Secondary JSON parse error after cleanup:', secondError);
-        throw new Error('Failed to parse API response. The JSON structure was invalid.');
-      }
-    }
+    // Use our robust JSON parsing logic for single objects
+    return safeJsonParseSimple(contentBlock.text);
   } catch (error) {
     console.error('Error analyzing obligation:', error);
     throw new Error(`Failed to analyze obligation: ${error instanceof Error ? error.message : 'Unknown error'}`);
