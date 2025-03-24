@@ -4,16 +4,7 @@ import { z } from "zod";
 import { relations } from "drizzle-orm";
 
 // Enums
-export const obligationTypeEnum = pgEnum('obligation_type', [
-  'payment',
-  'delivery',
-  'reporting',
-  'compliance',
-  'renewal',
-  'termination',
-  'other'
-]);
-
+// We'll use text for obligation types instead of enum to allow flexibility with AI responses
 export const obligationStatusEnum = pgEnum('obligation_status', [
   'pending',
   'completed',
@@ -50,12 +41,6 @@ export const users = pgTable("users", {
   last_login: timestamp("last_login")
 });
 
-export const usersRelations = relations(users, ({ many }) => ({
-  documents: many(documents),
-  obligations: many(obligations),
-  reminders: many(reminders)
-}));
-
 // Documents table
 export const documents = pgTable("documents", {
   id: serial("id").primaryKey(),
@@ -71,20 +56,12 @@ export const documents = pgTable("documents", {
   extraction_date: timestamp("extraction_date")
 });
 
-export const documentsRelations = relations(documents, ({ one, many }) => ({
-  user: one(users, {
-    fields: [documents.user_id],
-    references: [users.id]
-  }),
-  obligations: many(obligations)
-}));
-
 // Obligations table
 export const obligations = pgTable("obligations", {
   id: serial("id").primaryKey(),
   document_id: integer("document_id").references(() => documents.id).notNull(),
   text: text("text").notNull(), // One sentence summary of the obligation
-  type: obligationTypeEnum("type").notNull(),
+  type: text("type").notNull(), // Using text instead of enum for flexibility with AI responses
   start_date: timestamp("start_date"),
   due_date: timestamp("due_date"),
   responsible_party: text("responsible_party"),
@@ -101,6 +78,32 @@ export const obligations = pgTable("obligations", {
   modified_by: integer("modified_by").references(() => users.id)
 });
 
+// Reminders table
+export const reminders = pgTable("reminders", {
+  id: serial("id").primaryKey(),
+  obligation_id: integer("obligation_id").references(() => obligations.id).notNull(),
+  user_id: integer("user_id").references(() => users.id).notNull(),
+  reminder_date: timestamp("reminder_date").notNull(),
+  notification_method: notificationMethodEnum("notification_method").default("in-app").notNull(),
+  message: text("message"),
+  active: boolean("active").default(true).notNull()
+});
+
+// Define relations after all tables are defined
+export const usersRelations = relations(users, ({ many }) => ({
+  documents: many(documents),
+  obligations: many(obligations),
+  reminders: many(reminders)
+}));
+
+export const documentsRelations = relations(documents, ({ one, many }) => ({
+  user: one(users, {
+    fields: [documents.user_id],
+    references: [users.id]
+  }),
+  obligations: many(obligations)
+}));
+
 export const obligationsRelations = relations(obligations, ({ one, many }) => ({
   document: one(documents, {
     fields: [obligations.document_id],
@@ -116,17 +119,6 @@ export const obligationsRelations = relations(obligations, ({ one, many }) => ({
   }),
   reminders: many(reminders)
 }));
-
-// Reminders table
-export const reminders = pgTable("reminders", {
-  id: serial("id").primaryKey(),
-  obligation_id: integer("obligation_id").references(() => obligations.id).notNull(),
-  user_id: integer("user_id").references(() => users.id).notNull(),
-  reminder_date: timestamp("reminder_date").notNull(),
-  notification_method: notificationMethodEnum("notification_method").default("in-app").notNull(),
-  message: text("message"),
-  active: boolean("active").default(true).notNull()
-});
 
 export const remindersRelations = relations(reminders, ({ one }) => ({
   obligation: one(obligations, {

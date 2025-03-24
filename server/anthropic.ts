@@ -219,24 +219,13 @@ export async function extractObligations(text: string, documentId: number): Prom
       You are an expert legal analyst specializing in contract obligation extraction. 
       Your task is to identify and extract key contractual obligations from the provided document.
       
-      IMPORTANT: You MUST ONLY use the EXACT obligation types from this list:
-      - payment
-      - delivery
-      - reporting
-      - compliance
-      - renewal
-      - termination
-      - other
-      
-      Use "other" for any obligation type that doesn't fit the above categories precisely.
-      
       For each obligation, extract:
       1. Text - A one-sentence summary of the obligation (make this concise and clear)
-      2. Type - MUST be one of: payment, delivery, reporting, compliance, renewal, termination, or other (EXACTLY as listed)
+      2. Type - Categorize the obligation with a specific, descriptive label (e.g., payment, delivery, reporting, maintenance, compliance, confidentiality, etc.). Be specific and accurate.
       3. Start date - When the obligation starts (if specified) in YYYY-MM-DD format
       4. Due date - When the obligation must be fulfilled (if specified) in YYYY-MM-DD format
       5. Responsible party - Who is responsible for fulfilling the obligation (if specified)
-      6. Priority - MUST be one of: high, medium, or low (EXACTLY as listed)
+      6. Priority - Must be one of: high, medium, or low based on importance and urgency
       7. Original text - The EXACT wording from the contract (copy the complete obligation text verbatim)
       8. Clause number - The specific clause number in the contract (if available, e.g., "Section 3.2.1" or "Clause 5")
       9. Section name - The name or title of the section containing this obligation (if available)
@@ -287,20 +276,14 @@ export async function extractObligations(text: string, documentId: number): Prom
     
     // Convert to InsertObligation objects
     return extractedData.obligations.map(obligation => {
-      // Validate and normalize the obligation type to match our schema's enum
-      const validTypes = ['payment', 'delivery', 'reporting', 'compliance', 'renewal', 'termination', 'other'];
-      let normalizedType = obligation.type.toLowerCase();
-      
-      // If the type isn't in our valid types list, map it to 'other'
-      if (!validTypes.includes(normalizedType)) {
-        console.warn(`Invalid obligation type "${obligation.type}" detected - mapping to "other"`);
-        normalizedType = 'other';
-      }
+      // No need to validate obligation types anymore since we're using text field
+      // Just normalize the type by converting to lowercase for consistency
+      const normalizedType = obligation.type.toLowerCase();
       
       const insertObligation: InsertObligation = {
         document_id: documentId,
         text: obligation.text, // One sentence summary of the obligation
-        type: normalizedType as any,
+        type: normalizedType,
         original_text: obligation.original_text, // Exact wording from the contract
         confidence_score: obligation.confidence_score,
         priority: (obligation.priority || 'medium') as any,
@@ -388,25 +371,14 @@ export async function analyzeSpecificObligation(text: string): Promise<{
       model: 'claude-3-7-sonnet-20250219',
       max_tokens: 1000,
       system: `
-        Analyze the provided text as a potential contractual obligation. 
-        
-        IMPORTANT: You MUST ONLY use the EXACT obligation types from this list:
-        - payment
-        - delivery
-        - reporting
-        - compliance
-        - renewal
-        - termination
-        - other
-        
-        Use "other" for any obligation type that doesn't fit the above categories precisely.
+        Analyze the provided text as a potential contractual obligation.
         
         Extract and categorize it with the following fields:
-        - type: MUST be one of: payment, delivery, reporting, compliance, renewal, termination, or other (EXACTLY as listed)
+        - type: Categorize the obligation with a specific, descriptive label (e.g., payment, delivery, reporting, maintenance, compliance, confidentiality, etc.). Be specific and accurate.
         - start_date: when the obligation starts (YYYY-MM-DD format, if specified)
         - due_date: when it must be fulfilled (YYYY-MM-DD format, if specified)
         - responsible_party: who is responsible (if specified)
-        - priority: MUST be one of: high, medium, or low (EXACTLY as listed)
+        - priority: MUST be one of: high, medium, or low based on importance and urgency
         - clause_number: the specific clause number in the contract (if available, e.g., "Section 3.2.1" or "Clause 5")
         - section_name: the name or title of the section containing this obligation (if available)
         - confidence_score: your confidence in this analysis (0-100)
@@ -458,17 +430,10 @@ export async function analyzeSpecificObligation(text: string): Promise<{
       }
     }
     
-    // Validate and normalize obligation type
+    // Now we can accept any type returned by the AI
+    // Just normalize to lowercase for consistency and provide a default if missing
     if (result.type) {
-      const validTypes = ['payment', 'delivery', 'reporting', 'compliance', 'renewal', 'termination', 'other'];
-      const normalizedType = result.type.toLowerCase();
-      
-      if (!validTypes.includes(normalizedType)) {
-        console.warn(`Invalid obligation type "${result.type}" detected in analysis - mapping to "other"`);
-        result.type = 'other';
-      } else {
-        result.type = normalizedType;
-      }
+      result.type = result.type.toLowerCase();
     } else {
       // Default to 'other' if type is missing
       result.type = 'other';
