@@ -185,6 +185,8 @@ function safeJsonParseSimple(jsonString: string): any {
       const responsiblePartyMatch = cleanJson.match(/"responsible_party"\s*:\s*"([^"]*)"/);
       const priorityMatch = cleanJson.match(/"priority"\s*:\s*"([^"]*)"/);
       const confidenceScoreMatch = cleanJson.match(/"confidence_score"\s*:\s*(\d+)/);
+      const clauseNumberMatch = cleanJson.match(/"clause_number"\s*:\s*"([^"]*)"/);
+      const sectionNameMatch = cleanJson.match(/"section_name"\s*:\s*"([^"]*)"/);
       
       // Construct a valid minimal object
       const result: any = {
@@ -196,6 +198,8 @@ function safeJsonParseSimple(jsonString: string): any {
       if (dueDateMatch) result.due_date = dueDateMatch[1];
       if (responsiblePartyMatch) result.responsible_party = responsiblePartyMatch[1];
       if (priorityMatch) result.priority = priorityMatch[1];
+      if (clauseNumberMatch) result.clause_number = clauseNumberMatch[1];
+      if (sectionNameMatch) result.section_name = sectionNameMatch[1];
       
       return result;
     } catch (finalError) {
@@ -216,27 +220,31 @@ export async function extractObligations(text: string, documentId: number): Prom
       Your task is to identify and extract key contractual obligations from the provided document.
       
       For each obligation, extract:
-      1. Text - A clear, concise description of the obligation
+      1. Text - A one-sentence summary of the obligation (make this concise and clear)
       2. Type - Categorize as: payment, delivery, reporting, compliance, renewal, termination, or other
       3. Start date - When the obligation starts (if specified)
       4. Due date - When the obligation must be fulfilled (if specified)
       5. Responsible party - Who is responsible for fulfilling the obligation (if specified)
       6. Priority - Classify as high, medium, or low based on importance, deadlines, and consequences
-      7. Original text - The exact text from the document that describes this obligation
-      8. Page number - Approximate page number where the obligation appears (if possible to determine)
-      9. Confidence score - Your confidence in this extraction on a scale of 0-100
+      7. Original text - The EXACT wording from the contract (copy the complete obligation text verbatim)
+      8. Clause number - The specific clause number in the contract (if available, e.g., "Section 3.2.1" or "Clause 5")
+      9. Section name - The name or title of the section containing this obligation (if available)
+      10. Page number - Approximate page number where the obligation appears (if possible to determine)
+      11. Confidence score - Your confidence in this extraction on a scale of 0-100
       
       Format your response as a valid JSON object with the following structure:
       {
         "obligations": [
           {
-            "text": "string",
+            "text": "string", // One sentence summary
             "type": "payment|delivery|reporting|compliance|renewal|termination|other",
             "start_date": "YYYY-MM-DD", (optional)
             "due_date": "YYYY-MM-DD", (optional)
             "responsible_party": "string", (optional)
             "priority": "high|medium|low",
-            "original_text": "string",
+            "original_text": "string", // Exact wording from contract
+            "clause_number": "string", (optional)
+            "section_name": "string", (optional)
             "page_number": number, (optional)
             "confidence_score": number (0-100)
           },
@@ -270,9 +278,9 @@ export async function extractObligations(text: string, documentId: number): Prom
     return extractedData.obligations.map(obligation => {
       const insertObligation: InsertObligation = {
         document_id: documentId,
-        text: obligation.text,
+        text: obligation.text, // One sentence summary of the obligation
         type: obligation.type as any,
-        original_text: obligation.original_text,
+        original_text: obligation.original_text, // Exact wording from the contract
         confidence_score: obligation.confidence_score,
         priority: (obligation.priority || 'medium') as any,
         status: 'pending',
@@ -280,6 +288,7 @@ export async function extractObligations(text: string, documentId: number): Prom
         modified_by: 1 // Default user ID
       };
       
+      // Add optional fields if they exist in the response
       if (obligation.start_date) {
         insertObligation.start_date = new Date(obligation.start_date);
       }
@@ -296,6 +305,15 @@ export async function extractObligations(text: string, documentId: number): Prom
         insertObligation.page_number = obligation.page_number;
       }
       
+      // Add new fields: clause number and section name
+      if (obligation.clause_number) {
+        insertObligation.clause_number = obligation.clause_number;
+      }
+      
+      if (obligation.section_name) {
+        insertObligation.section_name = obligation.section_name;
+      }
+      
       return insertObligation;
     });
   } catch (error) {
@@ -310,6 +328,8 @@ export async function analyzeSpecificObligation(text: string): Promise<{
   due_date?: string;
   responsible_party?: string;
   priority?: string;
+  clause_number?: string;
+  section_name?: string;
   confidence_score: number;
 }> {
   try {
@@ -324,6 +344,8 @@ export async function analyzeSpecificObligation(text: string): Promise<{
         - due_date: when it must be fulfilled (YYYY-MM-DD format, if specified)
         - responsible_party: who is responsible (if specified)
         - priority: high, medium, or low based on importance and urgency
+        - clause_number: the specific clause number in the contract (if available, e.g., "Section 3.2.1" or "Clause 5")
+        - section_name: the name or title of the section containing this obligation (if available)
         - confidence_score: your confidence in this analysis (0-100)
         
         Return only JSON in this format without explanations:
@@ -333,6 +355,8 @@ export async function analyzeSpecificObligation(text: string): Promise<{
           "due_date": "string", (optional)
           "responsible_party": "string", (optional)
           "priority": "string",
+          "clause_number": "string", (optional)
+          "section_name": "string", (optional)
           "confidence_score": number
         }
       `,
