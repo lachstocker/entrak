@@ -222,8 +222,8 @@ export async function extractObligations(text: string, documentId: number): Prom
       For each obligation, extract:
       1. Text - A one-sentence summary of the obligation (make this concise and clear)
       2. Type - Categorize as: payment, delivery, reporting, compliance, renewal, termination, or other
-      3. Start date - When the obligation starts (if specified)
-      4. Due date - When the obligation must be fulfilled (if specified)
+      3. Start date - When the obligation starts (if specified) in YYYY-MM-DD format
+      4. Due date - When the obligation must be fulfilled (if specified) in YYYY-MM-DD format
       5. Responsible party - Who is responsible for fulfilling the obligation (if specified)
       6. Priority - Classify as high, medium, or low based on importance, deadlines, and consequences
       7. Original text - The EXACT wording from the contract (copy the complete obligation text verbatim)
@@ -288,13 +288,31 @@ export async function extractObligations(text: string, documentId: number): Prom
         modified_by: 1 // Default user ID
       };
       
-      // Add optional fields if they exist in the response
+      // Add optional fields if they exist in the response and are valid
       if (obligation.start_date) {
-        insertObligation.start_date = new Date(obligation.start_date);
+        try {
+          // Validate the date format before creating Date object
+          const startDate = new Date(obligation.start_date);
+          // Check if date is valid and not NaN
+          if (!isNaN(startDate.getTime())) {
+            insertObligation.start_date = startDate;
+          }
+        } catch (dateError) {
+          console.warn(`Invalid start_date format: ${obligation.start_date}`);
+        }
       }
       
       if (obligation.due_date) {
-        insertObligation.due_date = new Date(obligation.due_date);
+        try {
+          // Validate the date format before creating Date object
+          const dueDate = new Date(obligation.due_date);
+          // Check if date is valid and not NaN
+          if (!isNaN(dueDate.getTime())) {
+            insertObligation.due_date = dueDate;
+          }
+        } catch (dateError) {
+          console.warn(`Invalid due_date format: ${obligation.due_date}`);
+        }
       }
       
       if (obligation.responsible_party) {
@@ -382,7 +400,32 @@ export async function analyzeSpecificObligation(text: string): Promise<{
     }
     
     // Use our robust JSON parsing logic for single objects
-    return safeJsonParseSimple(contentBlock.text);
+    const result = safeJsonParseSimple(contentBlock.text);
+    
+    // Validate date fields
+    if (result.start_date) {
+      try {
+        const startDate = new Date(result.start_date);
+        if (isNaN(startDate.getTime())) {
+          delete result.start_date;
+        }
+      } catch (error) {
+        delete result.start_date;
+      }
+    }
+    
+    if (result.due_date) {
+      try {
+        const dueDate = new Date(result.due_date);
+        if (isNaN(dueDate.getTime())) {
+          delete result.due_date;
+        }
+      } catch (error) {
+        delete result.due_date;
+      }
+    }
+    
+    return result;
   } catch (error: any) {
     console.error('Error analyzing obligation:', error);
     
