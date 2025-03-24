@@ -282,6 +282,16 @@ const Obligations: React.FC = () => {
                   <h3 className="text-sm font-medium text-gray-500">AI Confidence Score</h3>
                   <p className="mt-1">{selectedObligation.confidence_score ? `${selectedObligation.confidence_score}%` : 'N/A'}</p>
                 </div>
+
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">Clause Number</h3>
+                  <p className="mt-1">{selectedObligation.clause_number || 'Not specified'}</p>
+                </div>
+                
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">Section Name</h3>
+                  <p className="mt-1">{selectedObligation.section_name || 'Not specified'}</p>
+                </div>
               </div>
               
               <div className="mt-2">
