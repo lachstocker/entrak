@@ -52,7 +52,9 @@ function safeJsonParse(jsonString: string): ExtractedObligationsResponse {
     .replace(/([{,]\s*)(\w+)(\s*:)/g, '$1"$2"$3')
     // Fix mismatched quotes
     .replace(/([{,][^{}:,]*?)"([^"]*?)'([^{}:,]*?:)/g, '$1"$2"$3')
-    .replace(/([{,][^{}:,]*?)'([^']*?)"([^{}:,]*?:)/g, '$1"$2"$3');
+    .replace(/([{,][^{}:,]*?)'([^']*?)"([^{}:,]*?:)/g, '$1"$2"$3')
+    // Replace single quotes with double quotes
+    .replace(/:\s*'([^']*)'/g, ':"$1"');
     
   try {
     // First attempt: direct parsing
@@ -61,7 +63,20 @@ function safeJsonParse(jsonString: string): ExtractedObligationsResponse {
     console.log("First parsing attempt failed, trying alternative methods...");
     
     try {
-      // Second attempt: Manually extract obligations array pattern
+      // Second attempt: Check if the response is missing the obligations wrapper
+      // Sometimes the API returns an array directly instead of {obligations: [...]}
+      if (cleanJson.trim().startsWith('[') && cleanJson.trim().endsWith(']')) {
+        try {
+          const directArray = JSON.parse(cleanJson);
+          if (Array.isArray(directArray) && directArray.length > 0) {
+            return { obligations: directArray };
+          }
+        } catch (err) {
+          console.log("Direct array parsing failed");
+        }
+      }
+      
+      // Third attempt: Manually extract obligations array pattern
       const obligationsMatch = cleanJson.match(/"obligations"\s*:\s*\[([\s\S]*?)\](?=\s*\})/);
       if (obligationsMatch && obligationsMatch[1]) {
         const obligationsArrayRaw = obligationsMatch[1];
@@ -91,7 +106,20 @@ function safeJsonParse(jsonString: string): ExtractedObligationsResponse {
                 currentObject = '';
                 inObject = false;
               } catch (objError) {
-                // Skip this object if it can't be parsed
+                // If parsing fails, try to fix common issues in this specific object
+                try {
+                  const fixedStr = currentObject
+                    .replace(/([{,]\s*)(\w+)(\s*:)/g, '$1"$2"$3')
+                    .replace(/:\s*'([^']*)'/g, ':"$1"')
+                    .replace(/,(\s*[\]}])/g, '$1');
+                  
+                  const fixedObligation = JSON.parse(fixedStr);
+                  obligationObjects.push(fixedObligation);
+                } catch (fixError) {
+                  // Skip this object if it still can't be parsed
+                  console.log("Failed to parse individual obligation after fixes");
+                }
+                
                 currentObject = '';
                 inObject = false;
               }
@@ -101,12 +129,22 @@ function safeJsonParse(jsonString: string): ExtractedObligationsResponse {
           }
         }
         
-        return { obligations: obligationObjects };
+        if (obligationObjects.length > 0) {
+          return { obligations: obligationObjects };
+        }
+      }
+      
+      // Fourth attempt: Try to identify individual JSON objects in the raw response
+      console.log("Attempting to extract obligation objects directly from the raw response");
+      const rawObligations = extractPotentialJsonObjects(jsonString);
+      if (rawObligations.length > 0) {
+        console.log(`Found ${rawObligations.length} potential obligation objects`);
+        return { obligations: rawObligations };
       }
       
       throw new Error("No obligations array found");
     } catch (secError) {
-      console.error("Second parsing attempt failed", secError);
+      console.error("Alternative parsing methods failed", secError);
       
       // Last resort: Try to use a regex-based approach to extract obligation objects
       try {
@@ -138,6 +176,54 @@ function safeJsonParse(jsonString: string): ExtractedObligationsResponse {
       }
     }
   }
+}
+
+// Helper function to extract potential JSON objects from a string
+function extractPotentialJsonObjects(text: string): any[] {
+  const results: any[] = [];
+  let currentObject = '';
+  let depth = 0;
+  
+  // Remove line breaks to simplify extraction
+  text = text.replace(/\n/g, ' ');
+  
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    
+    if (char === '{') {
+      depth++;
+      currentObject += char;
+    } else if (char === '}') {
+      currentObject += char;
+      depth--;
+      
+      if (depth === 0) {
+        // We have a complete object, try to parse it
+        try {
+          // Apply some fixes before parsing
+          let fixedObject = currentObject
+            .replace(/([{,]\s*)(\w+)(\s*:)/g, '$1"$2"$3')  // Quote unquoted keys
+            .replace(/:\s*'([^']*)'/g, ':"$1"')            // Replace single quotes with double quotes
+            .replace(/,(\s*[\]}])/g, '$1');                // Remove trailing commas
+          
+          const parsed = JSON.parse(fixedObject);
+          // Check if it has the minimum fields we expect for an obligation
+          if (parsed.text && typeof parsed.text === 'string' &&
+              parsed.type && typeof parsed.type === 'string') {
+            results.push(parsed);
+          }
+        } catch (e) {
+          // Skip this object
+        }
+        
+        currentObject = '';
+      }
+    } else if (depth > 0) {
+      currentObject += char;
+    }
+  }
+  
+  return results;
 }
 
 // Create a simpler version of the safeJsonParse function for single objects
@@ -237,7 +323,7 @@ export async function extractObligations(text: string, documentId: number): Prom
         "obligations": [
           {
             "text": "string", // One sentence summary
-            "type": "payment|delivery|reporting|compliance|renewal|termination|other",
+            "type": "string", // Type of obligation (be specific)
             "start_date": "YYYY-MM-DD", (optional)
             "due_date": "YYYY-MM-DD", (optional)
             "responsible_party": "string", (optional)
@@ -252,7 +338,9 @@ export async function extractObligations(text: string, documentId: number): Prom
         ]
       }
       
-      Focus only on clear, explicit obligations. If dates are mentioned relatively (e.g., "within 30 days"), make your best estimate for an absolute date.
+      VERY IMPORTANT: Your response MUST be valid JSON. Do not include explanations or formatting before or after the JSON.
+      Extract at least 10-20 obligations when possible. Focus on clear, explicit obligations.
+      If dates are mentioned relatively (e.g., "within 30 days"), make your best estimate for an absolute date.
       Include only the JSON in your response, no other text.
     `;
 
@@ -260,7 +348,7 @@ export async function extractObligations(text: string, documentId: number): Prom
 
     const response = await anthropic.messages.create({
       model: 'claude-3-7-sonnet-20250219',
-      max_tokens: 4000,
+      max_tokens: 8000,
       system: systemPrompt,
       messages: [{ role: 'user', content: userMessage }],
     });
