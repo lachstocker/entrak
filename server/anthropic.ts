@@ -9,13 +9,15 @@ const anthropic = new Anthropic({
 // Type for the obligation extraction response
 interface ExtractedObligationsResponse {
   obligations: {
-    text: string;
+    text: string; // One sentence summary of the obligation
     type: string;
     start_date?: string;
     due_date?: string;
     responsible_party?: string;
     priority?: string;
-    original_text: string;
+    original_text: string; // Exact wording from the contract
+    clause_number?: string; // Clause number from the contract
+    section_name?: string; // Section name from the contract
     page_number?: number;
     confidence_score: number;
   }[];

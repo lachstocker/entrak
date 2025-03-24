@@ -83,7 +83,7 @@ export const documentsRelations = relations(documents, ({ one, many }) => ({
 export const obligations = pgTable("obligations", {
   id: serial("id").primaryKey(),
   document_id: integer("document_id").references(() => documents.id).notNull(),
-  text: text("text").notNull(),
+  text: text("text").notNull(), // One sentence summary of the obligation
   type: obligationTypeEnum("type").notNull(),
   start_date: timestamp("start_date"),
   due_date: timestamp("due_date"),
@@ -91,7 +91,9 @@ export const obligations = pgTable("obligations", {
   status: obligationStatusEnum("status").default("pending").notNull(),
   priority: obligationPriorityEnum("priority").default("medium").notNull(),
   confidence_score: integer("confidence_score"),
-  original_text: text("original_text"),
+  original_text: text("original_text"), // Exact wording from the contract
+  clause_number: text("clause_number"), // Clause number from the contract
+  section_name: text("section_name"), // Section name from the contract
   page_number: integer("page_number"),
   created_at: timestamp("created_at").defaultNow().notNull(),
   last_modified: timestamp("last_modified").defaultNow().notNull(),
