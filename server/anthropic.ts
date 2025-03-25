@@ -379,6 +379,9 @@ async function processChunk(chunk: string, chunkIndex: number, totalChunks: numb
 
     console.log(`Processing chunk ${chunkIndex + 1} of ${totalChunks}, size: ${chunk.length} characters`);
 
+    // Note: Anthropic recommends streaming for operations that may take longer than 10 minutes
+    // For now, we'll use a smaller chunk size to avoid timeouts
+    // In the future, we can implement streaming to handle longer documents better
     const response = await anthropic.messages.create({
       model: 'claude-3-7-sonnet-20250219',
       max_tokens: 30000, // Increased token limit to handle larger chunks

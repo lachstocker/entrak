@@ -11,17 +11,18 @@ export async function extractTextFromPDF(filePath: string): Promise<string> {
     
     // Node.js environment
     if (typeof window === 'undefined') {
-      // Suppress the standard font warnings by configuring a dummy font provider
-      // This is just to avoid the warnings in the console, not to actually provide fonts
+      // Configure the PDF.js library for Node.js environment
       const pdfjsGlobal = pdfjs as any;
       if (pdfjsGlobal.GlobalWorkerOptions) {
         pdfjsGlobal.GlobalWorkerOptions.workerSrc = '';
       }
       
-      // Disable font loading rather than trying to fix it - we just need the text content
+      // Fully disable font handling to prevent errors
+      // We're only extracting text, so fonts aren't needed
       const loadingTask = pdfjs.getDocument({
         data: new Uint8Array(fs.readFileSync(filePath)),
         disableFontFace: true,  // Disable font face loading
+        disableRange: true     // Disable range requests
       });
       
       const pdf = await loadingTask.promise;
