@@ -41,6 +41,16 @@ export const users = pgTable("users", {
   last_login: timestamp("last_login")
 });
 
+// Projects table
+export const projects = pgTable("projects", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  last_modified: timestamp("last_modified").defaultNow().notNull(),
+  user_id: integer("user_id").references(() => users.id)
+});
+
 // Documents table
 export const documents = pgTable("documents", {
   id: serial("id").primaryKey(),
@@ -52,6 +62,7 @@ export const documents = pgTable("documents", {
   last_modified: timestamp("last_modified").defaultNow().notNull(),
   version: integer("version").default(1).notNull(),
   user_id: integer("user_id").references(() => users.id),
+  project_id: integer("project_id").references(() => projects.id),
   extracted: boolean("extracted").default(false).notNull(),
   extraction_date: timestamp("extraction_date"),
   status: text("status").default('not_processed').notNull()
@@ -94,13 +105,26 @@ export const reminders = pgTable("reminders", {
 export const usersRelations = relations(users, ({ many }) => ({
   documents: many(documents),
   obligations: many(obligations),
-  reminders: many(reminders)
+  reminders: many(reminders),
+  projects: many(projects)
+}));
+
+export const projectsRelations = relations(projects, ({ one, many }) => ({
+  user: one(users, {
+    fields: [projects.user_id],
+    references: [users.id]
+  }),
+  documents: many(documents)
 }));
 
 export const documentsRelations = relations(documents, ({ one, many }) => ({
   user: one(users, {
     fields: [documents.user_id],
     references: [users.id]
+  }),
+  project: one(projects, {
+    fields: [documents.project_id],
+    references: [projects.id]
   }),
   obligations: many(obligations)
 }));
