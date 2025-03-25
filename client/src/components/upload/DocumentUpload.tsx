@@ -108,6 +108,42 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUploadSuccess, projec
     }
   };
 
+  // Handle creating a new project
+  const handleCreateProject = async (values: ProjectFormValues) => {
+    setIsCreatingProject(true);
+    try {
+      const newProject = await apiRequest({
+        url: '/api/projects',
+        method: 'POST',
+        data: values,
+      });
+      
+      // Add the new project to the projects list
+      setProjects(prev => [...prev, newProject as Project]);
+      
+      // Select the new project in the dropdown
+      setSelectedProjectId((newProject as Project).id);
+      
+      // Close the dialog and reset form
+      setIsCreateProjectDialogOpen(false);
+      createProjectForm.reset();
+      
+      toast({
+        title: 'Success',
+        description: 'Project created successfully.',
+      });
+    } catch (error) {
+      console.error('Error creating project:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to create project. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsCreatingProject(false);
+    }
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
@@ -411,9 +447,20 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUploadSuccess, projec
           </div>
           
           <div className="mb-4">
-            <label className="block text-sm font-semibold mb-2" htmlFor="project-select">
-              Project (Optional)
-            </label>
+            <div className="flex justify-between items-center mb-2">
+              <label className="block text-sm font-semibold" htmlFor="project-select">
+                Project (Optional)
+              </label>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="flex items-center text-sm text-[#26E07F] hover:text-[#1fc068] hover:bg-[#e6f7f0]"
+                onClick={() => setIsCreateProjectDialogOpen(true)}
+              >
+                <PlusCircle className="w-4 h-4 mr-1" />
+                Create Project
+              </Button>
+            </div>
             <Select
               value={selectedProjectId?.toString() || "none"}
               onValueChange={(value) => setSelectedProjectId(value === "none" ? undefined : parseInt(value))}
@@ -498,6 +545,81 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUploadSuccess, projec
           </div>
         </div>
       )}
+      
+      {/* Create Project Dialog */}
+      <Dialog open={isCreateProjectDialogOpen} onOpenChange={setIsCreateProjectDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Create New Project</DialogTitle>
+            <DialogDescription>
+              Create a new project to organize your contract documents and their obligations.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <Form {...createProjectForm}>
+            <form onSubmit={createProjectForm.handleSubmit(handleCreateProject)} className="space-y-4 pt-4">
+              <FormField
+                control={createProjectForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Project Name *</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Enter project name"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={createProjectForm.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description (Optional)</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Enter project description"
+                        className="resize-none"
+                        rows={3}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <DialogFooter className="pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setIsCreateProjectDialogOpen(false);
+                    createProjectForm.reset();
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isCreatingProject}>
+                  {isCreatingProject ? (
+                    <>
+                      <span className="mr-2">Creating...</span>
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    </>
+                  ) : (
+                    'Create Project'
+                  )}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

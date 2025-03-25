@@ -79,7 +79,10 @@ const Documents: React.FC = () => {
     
     try {
       setIsDeleting(true);
-      await apiRequest('DELETE', `/api/documents/${deleteDocumentId}`);
+      await apiRequest({ 
+        method: 'DELETE', 
+        url: `/api/documents/${deleteDocumentId}` 
+      });
       
       toast({
         title: 'Document deleted',
@@ -121,8 +124,10 @@ const Documents: React.FC = () => {
         description: 'Extracting obligations from document...',
       });
       
-      const response = await apiRequest('POST', `/api/documents/${documentId}/extract`);
-      const data = await response.json();
+      const data = await apiRequest({ 
+        method: 'POST', 
+        url: `/api/documents/${documentId}/extract` 
+      });
       
       toast({
         title: 'Extraction complete',
