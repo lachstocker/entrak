@@ -73,7 +73,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'No file uploaded' });
       }
       
-      const { title, description } = req.body;
+      const { title, description, projectId } = req.body;
       
       // Validate required fields
       if (!title) {
@@ -86,6 +86,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Unsupported file type' });
       }
       
+      // Check if project exists when projectId is provided
+      if (projectId) {
+        const projectIdNum = parseInt(projectId as string);
+        const project = await storage.getProject(projectIdNum);
+        if (!project) {
+          return res.status(400).json({ message: 'Project not found' });
+        }
+      }
+      
       // Create document in database
       const document = await storage.createDocument({
         title,
@@ -93,7 +102,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         file_path: req.file.path,
         file_type: fileType,
         version: 1,
-        user_id: 1 // Default user ID for now
+        user_id: 1, // Default user ID for now
+        project_id: projectId ? parseInt(projectId as string) : undefined
       });
       
       res.status(201).json(document);
@@ -109,7 +119,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/documents', async (req: Request, res: Response) => {
     try {
       const userId = req.query.userId ? parseInt(req.query.userId as string) : undefined;
-      const documents = await storage.getDocuments(userId);
+      const projectId = req.query.projectId ? parseInt(req.query.projectId as string) : undefined;
+      const documents = await storage.getDocuments(userId, projectId);
       res.json(documents);
     } catch (error) {
       console.error('Error fetching documents:', error);
@@ -142,7 +153,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/documents/:id', async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
-      const { title, description } = req.body;
+      const { title, description, projectId } = req.body;
       
       // Validate the document exists
       const existingDocument = await storage.getDocument(id);
@@ -150,10 +161,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'Document not found' });
       }
       
+      // Check if project exists when projectId is provided
+      if (projectId !== undefined) {
+        if (projectId === null) {
+          // Allow removing a document from a project
+        } else {
+          const projectIdNum = parseInt(projectId as string);
+          const project = await storage.getProject(projectIdNum);
+          if (!project) {
+            return res.status(400).json({ message: 'Project not found' });
+          }
+        }
+      }
+      
       // Update document
       const updatedDocument = await storage.updateDocument(id, {
         title: title || existingDocument.title,
-        description: description ?? existingDocument.description
+        description: description ?? existingDocument.description,
+        project_id: projectId === null ? null : (projectId ? parseInt(projectId as string) : existingDocument.project_id)
       });
       
       res.json(updatedDocument);
@@ -439,6 +464,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Parse query parameters
       const filters: {
         documentId?: number;
+        projectId?: number;
         type?: string;
         status?: string;
         dueDateStart?: Date;
@@ -448,6 +474,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (req.query.documentId) {
         filters.documentId = parseInt(req.query.documentId as string);
+      }
+      
+      if (req.query.projectId) {
+        filters.projectId = parseInt(req.query.projectId as string);
       }
       
       if (req.query.type) {
@@ -733,6 +763,159 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Projects routes
+  app.post('/api/projects', async (req: Request, res: Response) => {
+    try {
+      // Validate request body
+      const validationResult = insertProjectSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: 'Invalid project data', 
+          errors: validationResult.error.errors 
+        });
+      }
+      
+      const project = await storage.createProject(validationResult.data);
+      res.status(201).json(project);
+    } catch (error) {
+      console.error('Error creating project:', error);
+      res.status(500).json({ 
+        message: 'Failed to create project',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+  
+  app.get('/api/projects', async (req: Request, res: Response) => {
+    try {
+      const userId = req.query.userId ? parseInt(req.query.userId as string) : undefined;
+      const projects = await storage.getProjects(userId);
+      res.json(projects);
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+      res.status(500).json({ 
+        message: 'Failed to fetch projects',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+  
+  app.get('/api/projects/:id', async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const project = await storage.getProject(id);
+      
+      if (!project) {
+        return res.status(404).json({ message: 'Project not found' });
+      }
+      
+      res.json(project);
+    } catch (error) {
+      console.error('Error fetching project:', error);
+      res.status(500).json({ 
+        message: 'Failed to fetch project',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+  
+  app.put('/api/projects/:id', async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      // Validate request body
+      const validationResult = insertProjectSchema.partial().safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: 'Invalid project data', 
+          errors: validationResult.error.errors 
+        });
+      }
+      
+      // Check if project exists
+      const existingProject = await storage.getProject(id);
+      if (!existingProject) {
+        return res.status(404).json({ message: 'Project not found' });
+      }
+      
+      // Update project
+      const updatedProject = await storage.updateProject(id, validationResult.data);
+      res.json(updatedProject);
+    } catch (error) {
+      console.error('Error updating project:', error);
+      res.status(500).json({ 
+        message: 'Failed to update project',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+  
+  app.delete('/api/projects/:id', async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      // Check if project exists
+      const project = await storage.getProject(id);
+      if (!project) {
+        return res.status(404).json({ message: 'Project not found' });
+      }
+      
+      // Delete the project (this will also update associated documents)
+      await storage.deleteProject(id);
+      res.status(204).send();
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      res.status(500).json({ 
+        message: 'Failed to delete project',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+  
+  app.get('/api/projects/:id/documents', async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      // Check if project exists
+      const project = await storage.getProject(id);
+      if (!project) {
+        return res.status(404).json({ message: 'Project not found' });
+      }
+      
+      // Get documents for this project
+      const documents = await storage.getDocumentsByProject(id);
+      res.json(documents);
+    } catch (error) {
+      console.error('Error fetching project documents:', error);
+      res.status(500).json({ 
+        message: 'Failed to fetch project documents',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+  
+  app.get('/api/projects/:id/obligations', async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      // Check if project exists
+      const project = await storage.getProject(id);
+      if (!project) {
+        return res.status(404).json({ message: 'Project not found' });
+      }
+      
+      // Get obligations for this project
+      const obligations = await storage.getObligationsByProject(id);
+      res.json(obligations);
+    } catch (error) {
+      console.error('Error fetching project obligations:', error);
+      res.status(500).json({ 
+        message: 'Failed to fetch project obligations',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
   // Analytics routes
   app.get('/api/analytics/obligations', async (req: Request, res: Response) => {
     try {
