@@ -196,6 +196,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUploadSuccess, projec
       formData.append('file', file);
       formData.append('title', title);
       if (description) formData.append('description', description);
+      if (selectedProjectId) formData.append('projectId', selectedProjectId.toString());
 
       // Upload document
       const response = await fetch('/api/documents', {
@@ -313,6 +314,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUploadSuccess, projec
       setFile(null);
       setTitle('');
       setDescription('');
+      // Keep the project selection for convenience
       setIsUploading(false);
       setUploadProgress(0);
       setProcessingSteps([
@@ -419,6 +421,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUploadSuccess, projec
                 setFile(null);
                 setTitle('');
                 setDescription('');
+                // Keep the project selection
               }}
             >
               Cancel
