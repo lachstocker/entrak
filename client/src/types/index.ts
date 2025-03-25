@@ -53,6 +53,17 @@ export interface User {
   role: string;
 }
 
+export interface Project {
+  id: number;
+  name: string;
+  description?: string;
+  created_at: string;
+  last_modified: string;
+  user_id?: number;
+  document_count?: number;
+  obligation_count?: number;
+}
+
 export interface StatsData {
   totalDocuments: number;
   activeObligations: number;

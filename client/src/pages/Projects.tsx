@@ -159,7 +159,7 @@ export default function Projects() {
     try {
       await apiRequest({
         url: `/api/projects/${selectedProject.id}`,
-        method: 'DELETE',
+        method: 'DELETE'
       });
       
       setProjects(projects.filter(project => project.id !== selectedProject.id));

@@ -1,20 +1,25 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Upload, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ProcessingStep from './ProcessingStep';
-import { ProcessingStep as ProcessingStepType } from '@/types';
+import { ProcessingStep as ProcessingStepType, Project } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { queryClient } from '@/lib/queryClient';
 import { apiRequest } from '@/lib/queryClient';
 
 interface DocumentUploadProps {
   onUploadSuccess?: (documentId: number) => void;
+  projectId?: number;
 }
 
-const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUploadSuccess }) => {
+const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUploadSuccess, projectId }) => {
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [selectedProjectId, setSelectedProjectId] = useState<number | undefined>(projectId);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -28,6 +33,30 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUploadSuccess }) => {
     { id: 'analyze', name: 'AI Analysis', status: 'pending', progress: 0 },
     { id: 'categorize', name: 'Obligation Categorization', status: 'pending', progress: 0 }
   ]);
+  
+  // Fetch projects on component mount
+  useEffect(() => {
+    const fetchProjects = async () => {
+      setIsLoading(true);
+      try {
+        const data = await apiRequest({ 
+          url: '/api/projects'
+        });
+        setProjects(data as Project[]);
+      } catch (error) {
+        console.error('Error fetching projects:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load projects. Please try again.',
+          variant: 'destructive',
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchProjects();
+  }, [toast]);
   
   // Clean up any active intervals when component unmounts
   useEffect(() => {
@@ -351,6 +380,28 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUploadSuccess }) => {
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Enter document description"
             />
+          </div>
+          
+          <div className="mb-4">
+            <label className="block text-sm font-semibold mb-2" htmlFor="project-select">
+              Project (Optional)
+            </label>
+            <Select
+              value={selectedProjectId?.toString() || ""}
+              onValueChange={(value) => setSelectedProjectId(value ? parseInt(value) : undefined)}
+            >
+              <SelectTrigger id="project-select" className="w-full">
+                <SelectValue placeholder="Select a project" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">None</SelectItem>
+                {projects.map((project) => (
+                  <SelectItem key={project.id} value={project.id.toString()}>
+                    {project.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           
           <div className="flex items-center p-4 bg-[#E6F0F5] rounded-md mb-4">
