@@ -34,11 +34,12 @@ const ProcessingStep: React.FC<ProcessingStepProps> = ({ name, status, progress 
             ${status === 'processing' ? 'text-[#0F2B46]' : ''}
             ${status === 'pending' ? 'text-gray-500' : ''}
           `}>
-            {status === 'completed' 
-              ? 'Complete' 
-              : status === 'processing' 
-                ? `Processing (${progress}%)` 
-                : 'Pending'}
+            {status === 'completed' ? 'Complete' : 
+              status === 'processing' && name === 'Document Upload' ? `Uploading (${progress}%)` :
+              status === 'processing' && name === 'Text Extraction' ? `Extracting Text (${progress}%)` :
+              status === 'processing' && name === 'AI Analysis' ? `Analyzing (${progress}%)` :
+              status === 'processing' && name === 'Obligation Categorization' ? `Categorizing (${progress}%)` :
+              'Pending'}
           </p>
         </div>
         

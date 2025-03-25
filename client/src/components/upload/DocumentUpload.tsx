@@ -176,96 +176,128 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUploadSuccess }) => {
       // Start processing document
       setIsProcessing(true);
       
-      // Start text extraction
+      // Immediately mark text extraction as processing
       updateProcessingStep('extract', { status: 'processing', progress: 0 });
       
-      // Simulate extraction progress
-      let extractionProgress = 0;
-      const extractionInterval = setInterval(() => {
-        extractionProgress += 20;
-        if (extractionProgress >= 100) {
-          clearInterval(extractionInterval);
-          updateProcessingStep('extract', { status: 'completed', progress: 100 });
+      // Start document extraction with real-time progress updates
+      // The actual document processing happens here (API call)
+      const extractionStartTime = Date.now();
+      
+      // Update extraction progress steadily based on documents of similar size completing in ~30 seconds
+      const extractionProgress = { value: 0 };
+      let extractionInterval: NodeJS.Timeout; // Define interval reference
+      extractionInterval = setInterval(() => {
+        // Calculate how much time has passed since extraction started (0-100%)
+        const elapsedMs = Date.now() - extractionStartTime;
+        
+        // Text extraction phase typically takes ~2-3 seconds for most documents
+        if (elapsedMs < 3000) {
+          // Text extraction phase (0-100%)
+          extractionProgress.value = Math.min(Math.floor(elapsedMs / 30), 100);
+          updateProcessingStep('extract', { progress: extractionProgress.value });
           
-          // Start AI Analysis
-          updateProcessingStep('analyze', { status: 'processing', progress: 0 });
+          if (extractionProgress.value >= 100) {
+            // Mark extraction as complete
+            updateProcessingStep('extract', { status: 'completed', progress: 100 });
+            // Start AI Analysis immediately
+            updateProcessingStep('analyze', { status: 'processing', progress: 0 });
+          }
+        } else if (elapsedMs < 45000) {
+          // AI Analysis phase - takes much longer (45 seconds for average doc)
+          // Convert elapsed time minus extraction phase to a percentage of expected analysis time
+          const analysisTimeMs = elapsedMs - 3000;
+          const analysisProgress = Math.min(Math.floor(analysisTimeMs / 420), 100);
+          updateProcessingStep('analyze', { progress: analysisProgress });
           
-          // Simulate AI Analysis progress
-          let analysisProgress = 0;
-          const analysisInterval = setInterval(() => {
-            analysisProgress += 5;
-            updateProcessingStep('analyze', { progress: analysisProgress });
-            
-            if (analysisProgress >= 100) {
-              clearInterval(analysisInterval);
-              updateProcessingStep('analyze', { status: 'completed', progress: 100 });
-              
-              // Start Obligation Categorization
-              updateProcessingStep('categorize', { status: 'processing', progress: 0 });
-              
-              // Simulate categorization progress
-              let categorizationProgress = 0;
-              const categorizationInterval = setInterval(() => {
-                categorizationProgress += 10;
-                updateProcessingStep('categorize', { progress: categorizationProgress });
-                
-                if (categorizationProgress >= 100) {
-                  clearInterval(categorizationInterval);
-                  updateProcessingStep('categorize', { status: 'completed', progress: 100 });
-                  
-                  // All processing complete
-                  setIsProcessing(false);
-                  
-                  toast({
-                    title: 'Processing complete',
-                    description: 'Document has been processed successfully.',
-                  });
-                  
-                  // Invalidate documents query to refresh the list
-                  queryClient.invalidateQueries({ queryKey: ['/api/documents'] });
-                  
-                  // Call onUploadSuccess callback if provided
-                  if (onUploadSuccess) {
-                    onUploadSuccess(document.id);
-                  }
-                  
-                  // Reset the form
-                  setFile(null);
-                  setTitle('');
-                  setDescription('');
-                  setIsUploading(false);
-                  setUploadProgress(0);
-                  setProcessingSteps([
-                    { id: 'upload', name: 'Document Upload', status: 'pending', progress: 0 },
-                    { id: 'extract', name: 'Text Extraction', status: 'pending', progress: 0 },
-                    { id: 'analyze', name: 'AI Analysis', status: 'pending', progress: 0 },
-                    { id: 'categorize', name: 'Obligation Categorization', status: 'pending', progress: 0 }
-                  ]);
-                }
-              }, 200);
-            }
-          }, 300);
+          if (analysisProgress >= 100) {
+            // Mark AI Analysis as complete when the progress reaches 100%
+            updateProcessingStep('analyze', { status: 'completed', progress: 100 });
+            // Start Obligation Categorization immediately
+            updateProcessingStep('categorize', { status: 'processing', progress: 0 });
+          }
+        } else {
+          // Categorization phase (remaining few seconds)
+          const categorizationTimeMs = elapsedMs - 45000;
+          const categorizationProgress = Math.min(Math.floor(categorizationTimeMs / 50), 100);
+          updateProcessingStep('categorize', { progress: categorizationProgress });
         }
-      }, 200);
+      }, 100);
 
-      // Call the extraction API
+      // Call the extraction API - this will actually process the document
       const extractResponse = await fetch(`/api/documents/${document.id}/extract`, {
         method: 'POST',
       });
       
       if (!extractResponse.ok) {
+        // Clear any running intervals before throwing the error
+        clearInterval(extractionInterval);
         throw new Error(`Extraction failed: ${extractResponse.statusText}`);
       }
+      
+      // Process the extraction response
+      const extractResult = await extractResponse.json();
+      
+      // Clear the extraction interval as we've now got the actual result
+      clearInterval(extractionInterval);
+      
+      // Mark all remaining steps as complete
+      updateProcessingStep('extract', { status: 'completed', progress: 100 });
+      updateProcessingStep('analyze', { status: 'completed', progress: 100 });
+      updateProcessingStep('categorize', { status: 'completed', progress: 100 });
+      
+      // All processing complete
+      setIsProcessing(false);
+      
+      const obligationCount = extractResult.count || 0;
+      toast({
+        title: 'Processing complete',
+        description: `Document processed successfully. Found ${obligationCount} obligations.`,
+      });
+      
+      // Invalidate documents and obligations queries to refresh the lists
+      queryClient.invalidateQueries({ queryKey: ['/api/documents'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/obligations'] });
+      
+      // Call onUploadSuccess callback if provided
+      if (onUploadSuccess) {
+        onUploadSuccess(document.id);
+      }
+      
+      // Reset the form
+      setFile(null);
+      setTitle('');
+      setDescription('');
+      setIsUploading(false);
+      setUploadProgress(0);
+      setProcessingSteps([
+        { id: 'upload', name: 'Document Upload', status: 'pending', progress: 0 },
+        { id: 'extract', name: 'Text Extraction', status: 'pending', progress: 0 },
+        { id: 'analyze', name: 'AI Analysis', status: 'pending', progress: 0 },
+        { id: 'categorize', name: 'Obligation Categorization', status: 'pending', progress: 0 }
+      ]);
 
     } catch (error) {
-      console.error('Error uploading document:', error);
+      console.error('Error uploading or processing document:', error);
+      
+      // Clear any running intervals
+      if (typeof extractionInterval !== 'undefined') {
+        clearInterval(extractionInterval);
+      }
+      
       toast({
-        title: 'Upload failed',
-        description: error instanceof Error ? error.message : 'An error occurred during upload',
+        title: 'Processing failed',
+        description: error instanceof Error ? error.message : 'An error occurred during document processing',
         variant: 'destructive'
       });
+      
+      // Reset all states
       setIsUploading(false);
       setIsProcessing(false);
+      
+      // Update UI to show error states on the progress indicators
+      updateProcessingStep('extract', { status: 'pending', progress: 0 });
+      updateProcessingStep('analyze', { status: 'pending', progress: 0 });
+      updateProcessingStep('categorize', { status: 'pending', progress: 0 });
     }
   };
 
