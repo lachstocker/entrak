@@ -49,7 +49,11 @@ const Documents: React.FC = () => {
   useEffect(() => {
     const fetchProjects = async () => {
       try {
-        const data = await apiRequest('GET', '/api/projects') as Project[];
+        const response = await fetch('/api/projects');
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        const data = await response.json();
         setProjects(data);
       } catch (error) {
         console.error('Failed to fetch projects:', error);
@@ -64,7 +68,7 @@ const Documents: React.FC = () => {
     };
     
     fetchProjects();
-  }, []);
+  }, [toast]);
   
   const handleDeleteClick = (documentId: number) => {
     setDeleteDocumentId(documentId);
@@ -167,16 +171,16 @@ const Documents: React.FC = () => {
               {/* Project filter */}
               <div className="w-[200px]">
                 <Select
-                  value={selectedProjectId?.toString() || ""}
+                  value={selectedProjectId?.toString() || "all"}
                   onValueChange={(value) => {
-                    setSelectedProjectId(value ? parseInt(value) : undefined);
+                    setSelectedProjectId(value === "all" ? undefined : parseInt(value));
                   }}
                 >
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Filter by project" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Projects</SelectItem>
+                    <SelectItem value="all">All Projects</SelectItem>
                     {projects.map((project) => (
                       <SelectItem key={project.id} value={project.id.toString()}>
                         {project.name}

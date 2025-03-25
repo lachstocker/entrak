@@ -387,14 +387,14 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUploadSuccess, projec
               Project (Optional)
             </label>
             <Select
-              value={selectedProjectId?.toString() || ""}
-              onValueChange={(value) => setSelectedProjectId(value ? parseInt(value) : undefined)}
+              value={selectedProjectId?.toString() || "none"}
+              onValueChange={(value) => setSelectedProjectId(value === "none" ? undefined : parseInt(value))}
             >
               <SelectTrigger id="project-select" className="w-full">
                 <SelectValue placeholder="Select a project" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">None</SelectItem>
+                <SelectItem value="none">None</SelectItem>
                 {projects.map((project) => (
                   <SelectItem key={project.id} value={project.id.toString()}>
                     {project.name}
