@@ -10,7 +10,8 @@ import {
   insertDocumentSchema, 
   insertObligationSchema, 
   insertReminderSchema,
-  insertUserSchema
+  insertUserSchema,
+  insertProjectSchema
 } from "@shared/schema";
 import { 
   extractObligations, 
