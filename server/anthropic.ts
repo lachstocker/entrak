@@ -295,15 +295,44 @@ function safeJsonParseSimple(jsonString: string): any {
   }
 }
 
-export async function extractObligations(text: string, documentId: number): Promise<InsertObligation[]> {
-  if (!text || text.trim() === '') {
-    throw new Error('No text provided for obligation extraction');
+// Helper function to split text into chunks of reasonable size
+function splitTextIntoChunks(text: string, chunkSize: number = 60000): string[] {
+  const paragraphs = text.split('\n\n');
+  const chunks: string[] = [];
+  let currentChunk = '';
+
+  for (const paragraph of paragraphs) {
+    // If adding this paragraph would exceed the chunk size, save current chunk and start a new one
+    if (currentChunk.length + paragraph.length + 2 > chunkSize && currentChunk.length > 0) {
+      chunks.push(currentChunk);
+      currentChunk = paragraph;
+    } else {
+      // Otherwise, add the paragraph to the current chunk
+      if (currentChunk.length > 0) {
+        currentChunk += '\n\n' + paragraph;
+      } else {
+        currentChunk = paragraph;
+      }
+    }
   }
 
+  // Add the last chunk if it's not empty
+  if (currentChunk.length > 0) {
+    chunks.push(currentChunk);
+  }
+
+  return chunks;
+}
+
+// Process a single chunk of text to extract obligations
+async function processChunk(chunk: string, chunkIndex: number, totalChunks: number, documentId: number): Promise<InsertObligation[]> {
   try {
     const systemPrompt = `
       You are an expert legal analyst specializing in contract obligation extraction. 
-      Your task is to identify and extract key contractual obligations from the provided document.
+      Your task is to identify and extract key contractual obligations from the provided document chunk.
+      
+      IMPORTANT: You are analyzing chunk ${chunkIndex + 1} of ${totalChunks} from a larger contract document.
+      Focus only on the text provided in this chunk.
       
       For each obligation, extract:
       1. Text - A one-sentence summary of the obligation (make this concise and clear)
@@ -339,18 +368,20 @@ export async function extractObligations(text: string, documentId: number): Prom
       }
       
       VERY IMPORTANT: Your response MUST be valid JSON. Do not include explanations or formatting before or after the JSON.
-      Be extremely thorough and extract ALL obligations from the document (aim for at least 30-50 when possible).
+      Be extremely thorough and extract ALL obligations from this chunk.
       Focus on clear, explicit obligations but don't miss anything important.
       Capture every contractual requirement, deadline, and responsibility.
       If dates are mentioned relatively (e.g., "within 30 days"), make your best estimate for an absolute date.
       Include only the JSON in your response, no other text.
     `;
 
-    const userMessage = `Here is the contract document to analyze:\n\n${text}`;
+    const userMessage = `Here is chunk ${chunkIndex + 1} of ${totalChunks} from the contract document to analyze:\n\n${chunk}`;
+
+    console.log(`Processing chunk ${chunkIndex + 1} of ${totalChunks}, size: ${chunk.length} characters`);
 
     const response = await anthropic.messages.create({
       model: 'claude-3-7-sonnet-20250219',
-      max_tokens: 20000, // Increased max output tokens to 20,000
+      max_tokens: 20000, // High token limit to ensure we get full output
       system: systemPrompt,
       messages: [{ role: 'user', content: userMessage }],
     });
@@ -366,9 +397,8 @@ export async function extractObligations(text: string, documentId: number): Prom
     
     // Convert to InsertObligation objects
     return extractedData.obligations.map(obligation => {
-      // No need to validate obligation types anymore since we're using text field
-      // Just normalize the type by converting to lowercase for consistency
-      const normalizedType = obligation.type.toLowerCase();
+      // Normalize the type by converting to lowercase for consistency
+      const normalizedType = obligation.type ? obligation.type.toLowerCase() : 'other';
       
       const insertObligation: InsertObligation = {
         document_id: documentId,
@@ -428,6 +458,60 @@ export async function extractObligations(text: string, documentId: number): Prom
       
       return insertObligation;
     });
+  } catch (error: any) {
+    console.error(`Error processing chunk ${chunkIndex + 1}:`, error);
+    
+    // Check for rate limit errors specifically
+    if (error.status === 429) {
+      // Extract retry-after header if available
+      const retryAfter = error.headers && error.headers['retry-after'] 
+        ? parseInt(error.headers['retry-after'], 10) 
+        : 60; // Default to 60 seconds
+      
+      throw new Error(`RATE_LIMIT:${retryAfter}`);
+    }
+    
+    // For non-critical errors, return an empty array instead of failing the entire process
+    return [];
+  }
+}
+
+export async function extractObligations(text: string, documentId: number): Promise<InsertObligation[]> {
+  if (!text || text.trim() === '') {
+    throw new Error('No text provided for obligation extraction');
+  }
+
+  try {
+    console.log(`Starting extraction for document ID ${documentId}, text length: ${text.length} characters`);
+    
+    // For large documents, split into chunks to avoid hitting token limits
+    const chunks = splitTextIntoChunks(text);
+    console.log(`Split document into ${chunks.length} chunks`);
+    
+    // Process each chunk in parallel with a concurrency limit
+    const allObligations: InsertObligation[] = [];
+    const chunkResults: InsertObligation[][] = [];
+    
+    // Process chunks sequentially to avoid rate limits
+    for (let i = 0; i < chunks.length; i++) {
+      try {
+        console.log(`Starting to process chunk ${i + 1} of ${chunks.length}`);
+        const chunkObligations = await processChunk(chunks[i], i, chunks.length, documentId);
+        console.log(`Successfully processed chunk ${i + 1}, found ${chunkObligations.length} obligations`);
+        chunkResults.push(chunkObligations);
+      } catch (error) {
+        console.error(`Error processing chunk ${i + 1}:`, error);
+        // Continue with next chunk rather than failing the entire process
+      }
+    }
+    
+    // Combine all results
+    for (const results of chunkResults) {
+      allObligations.push(...results);
+    }
+    
+    console.log(`Extraction complete, found ${allObligations.length} total obligations`);
+    return allObligations;
   } catch (error: any) {
     console.error('Error extracting obligations:', error);
     
