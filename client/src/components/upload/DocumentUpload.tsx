@@ -28,6 +28,16 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUploadSuccess }) => {
     { id: 'analyze', name: 'AI Analysis', status: 'pending', progress: 0 },
     { id: 'categorize', name: 'Obligation Categorization', status: 'pending', progress: 0 }
   ]);
+  
+  // Clean up any active intervals when component unmounts
+  useEffect(() => {
+    return () => {
+      if (extractionIntervalRef.current) {
+        clearInterval(extractionIntervalRef.current);
+        extractionIntervalRef.current = null;
+      }
+    };
+  }, []);
 
   const updateProcessingStep = (id: string, updates: Partial<ProcessingStepType>) => {
     setProcessingSteps(steps => 
@@ -186,8 +196,8 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUploadSuccess }) => {
       
       // Update extraction progress steadily based on documents of similar size completing in ~30 seconds
       const extractionProgress = { value: 0 };
-      // Create new interval
-      const extractionInterval = setInterval(() => {
+      // Create new interval and store it in our ref for later access
+      extractionIntervalRef.current = setInterval(() => {
         // Calculate how much time has passed since extraction started (0-100%)
         const elapsedMs = Date.now() - extractionStartTime;
         
@@ -231,7 +241,10 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUploadSuccess }) => {
       
       if (!extractResponse.ok) {
         // Clear any running intervals before throwing the error
-        clearInterval(extractionInterval);
+        if (extractionIntervalRef.current) {
+          clearInterval(extractionIntervalRef.current);
+          extractionIntervalRef.current = null;
+        }
         throw new Error(`Extraction failed: ${extractResponse.statusText}`);
       }
       
@@ -239,7 +252,10 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUploadSuccess }) => {
       const extractResult = await extractResponse.json();
       
       // Clear the extraction interval as we've now got the actual result
-      clearInterval(extractionInterval);
+      if (extractionIntervalRef.current) {
+        clearInterval(extractionIntervalRef.current);
+        extractionIntervalRef.current = null;
+      }
       
       // Mark all remaining steps as complete
       updateProcessingStep('extract', { status: 'completed', progress: 100 });
@@ -280,7 +296,11 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUploadSuccess }) => {
     } catch (error) {
       console.error('Error uploading or processing document:', error);
       
-      // No need to clear intervals in the catch block as they will be automatically cleared when the component unmounts
+      // Clean up interval if it exists
+      if (extractionIntervalRef.current) {
+        clearInterval(extractionIntervalRef.current);
+        extractionIntervalRef.current = null;
+      }
       
       toast({
         title: 'Processing failed',
