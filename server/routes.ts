@@ -212,10 +212,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Save obligations to database
       const savedObligations = await storage.createBatchObligations(obligations);
       
-      // Update document extraction status
+      // Update document status to processing at start
+      await storage.updateDocument(id, {
+        extracted: false,
+        status: 'processing'
+      });
+
+      // After processing, update to extracted
       await storage.updateDocument(id, {
         extracted: true,
-        extraction_date: new Date()
+        extraction_date: new Date(),
+        status: 'processed'
       });
       
       res.json({

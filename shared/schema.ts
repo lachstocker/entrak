@@ -53,7 +53,8 @@ export const documents = pgTable("documents", {
   version: integer("version").default(1).notNull(),
   user_id: integer("user_id").references(() => users.id),
   extracted: boolean("extracted").default(false).notNull(),
-  extraction_date: timestamp("extraction_date")
+  extraction_date: timestamp("extraction_date"),
+  status: text("status").default('not_processed').notNull()
 });
 
 // Obligations table
