@@ -1,7 +1,14 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Upload, FileText } from 'lucide-react';
+import { Upload, FileText, PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
 import ProcessingStep from './ProcessingStep';
 import { ProcessingStep as ProcessingStepType, Project } from '@/types';
 import { useToast } from '@/hooks/use-toast';
@@ -13,6 +20,15 @@ interface DocumentUploadProps {
   projectId?: number;
 }
 
+// Define the schema for creating a new project
+const projectFormSchema = z.object({
+  name: z.string().min(1, 'Project name is required'),
+  description: z.string().optional(),
+  user_id: z.number().optional(),
+});
+
+type ProjectFormValues = z.infer<typeof projectFormSchema>;
+
 const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUploadSuccess, projectId }) => {
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState('');
@@ -23,9 +39,21 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUploadSuccess, projec
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isCreateProjectDialogOpen, setIsCreateProjectDialogOpen] = useState(false);
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const extractionIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
+  
+  // Form for creating a new project
+  const createProjectForm = useForm<ProjectFormValues>({
+    resolver: zodResolver(projectFormSchema),
+    defaultValues: {
+      name: '',
+      description: '',
+      user_id: 1, // Default user ID
+    },
+  });
 
   const [processingSteps, setProcessingSteps] = useState<ProcessingStepType[]>([
     { id: 'upload', name: 'Document Upload', status: 'pending', progress: 0 },
@@ -39,7 +67,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUploadSuccess, projec
     const fetchProjects = async () => {
       setIsLoading(true);
       try {
-        const data = await apiRequest('GET', '/api/projects');
+        const data = await apiRequest({ url: '/api/projects' });
         setProjects(data as Project[]);
       } catch (error) {
         console.error('Error fetching projects:', error);
