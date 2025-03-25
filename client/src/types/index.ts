@@ -8,6 +8,8 @@ export interface Document {
   last_modified: string;
   version: number;
   user_id?: number;
+  project_id?: number;
+  project?: Project;
   extracted: boolean;
   extraction_date?: string;
 }

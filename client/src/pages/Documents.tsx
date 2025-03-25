@@ -150,6 +150,7 @@ const Documents: React.FC = () => {
                   <TableHead>Type</TableHead>
                   <TableHead>Upload Date</TableHead>
                   <TableHead>Version</TableHead>
+                  <TableHead>Project</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -157,13 +158,13 @@ const Documents: React.FC = () => {
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
+                    <TableCell colSpan={7} className="h-24 text-center">
                       Loading documents...
                     </TableCell>
                   </TableRow>
                 ) : error ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center text-red-500">
+                    <TableCell colSpan={7} className="h-24 text-center text-red-500">
                       Error loading documents: {error instanceof Error ? error.message : 'Unknown error'}
                     </TableCell>
                   </TableRow>
@@ -193,6 +194,13 @@ const Documents: React.FC = () => {
                         </div>
                       </TableCell>
                       <TableCell>v{document.version}</TableCell>
+                      <TableCell>
+                        {document.project ? (
+                          <div className="font-medium">{document.project.name}</div>
+                        ) : (
+                          <span className="text-gray-400 text-sm">None</span>
+                        )}
+                      </TableCell>
                       <TableCell>
                         {document.extracted ? (
                           <Badge variant="default" className="bg-[#26E07F]">Processed</Badge>
@@ -236,7 +244,7 @@ const Documents: React.FC = () => {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
+                    <TableCell colSpan={7} className="h-24 text-center">
                       No documents found. Upload a document to get started.
                     </TableCell>
                   </TableRow>
