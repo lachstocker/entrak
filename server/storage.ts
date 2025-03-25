@@ -104,7 +104,8 @@ export class DatabaseStorage implements IStorage {
         upload_date: new Date(),
         last_modified: new Date(),
         extracted: false,
-        extraction_date: null
+        extraction_date: null,
+        status: 'not_processed' // Add status explicitly
       })
       .returning();
     return document;
