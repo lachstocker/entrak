@@ -513,11 +513,8 @@ export async function analyzeSpecificObligation(text: string): Promise<{
   confidence_score: number;
 }> {
   try {
-    // Use streaming for long-running operations
-    let completeResponse = '';
-    
-    // Create a stream
-    const stream = await anthropic.messages.create({
+    // Standard batch processing
+    const response = await anthropic.messages.create({
       model: 'claude-3-7-sonnet-20250219',
       max_tokens: 1000,
       system: `
@@ -535,18 +532,15 @@ export async function analyzeSpecificObligation(text: string): Promise<{
         }
       `,
       messages: [{ role: 'user', content: text }],
-      stream: true,
     });
     
-    // Process the stream
-    for await (const chunk of stream) {
-      if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text') {
-        completeResponse += chunk.delta.text;
-      }
+    const contentBlock = response.content[0];
+    if (contentBlock.type !== 'text') {
+      throw new Error('Unexpected response format: Not a text content block');
     }
     
     // Use our robust JSON parsing logic for single objects
-    const result = safeJsonParseSimple(completeResponse);
+    const result = safeJsonParseSimple(contentBlock.text);
     
     // Validate date fields
     if (result.start_date) {
