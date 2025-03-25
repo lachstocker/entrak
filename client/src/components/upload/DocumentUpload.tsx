@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Upload, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ProcessingStep from './ProcessingStep';
@@ -19,6 +19,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUploadSuccess }) => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const extractionIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
   const [processingSteps, setProcessingSteps] = useState<ProcessingStepType[]>([
@@ -185,8 +186,8 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUploadSuccess }) => {
       
       // Update extraction progress steadily based on documents of similar size completing in ~30 seconds
       const extractionProgress = { value: 0 };
-      let extractionInterval: NodeJS.Timeout; // Define interval reference
-      extractionInterval = setInterval(() => {
+      // Create new interval
+      const extractionInterval = setInterval(() => {
         // Calculate how much time has passed since extraction started (0-100%)
         const elapsedMs = Date.now() - extractionStartTime;
         
@@ -279,10 +280,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUploadSuccess }) => {
     } catch (error) {
       console.error('Error uploading or processing document:', error);
       
-      // Clear any running intervals
-      if (typeof extractionInterval !== 'undefined') {
-        clearInterval(extractionInterval);
-      }
+      // No need to clear intervals in the catch block as they will be automatically cleared when the component unmounts
       
       toast({
         title: 'Processing failed',
