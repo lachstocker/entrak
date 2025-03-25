@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TrashIcon, DownloadIcon, FileText, Clock, UploadCloud } from 'lucide-react';
 import TopNavbar from '@/components/layout/TopNavbar';
 import { Button } from '@/components/ui/button';
@@ -21,17 +21,50 @@ import {
 import { Badge } from '@/components/ui/badge';
 import DocumentUpload from '@/components/upload/DocumentUpload';
 import { useDocuments } from '@/hooks/useDocuments';
-import { Document } from '@/types';
+import { Document, Project } from '@/types';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { formatDate } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
+import { useLocation } from 'wouter';
 
 const Documents: React.FC = () => {
-  const { documents, isLoading, error } = useDocuments();
+  const [selectedProjectId, setSelectedProjectId] = useState<number | undefined>(undefined);
+  const { documents, isLoading, error } = useDocuments(undefined, selectedProjectId);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [deleteDocumentId, setDeleteDocumentId] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [isLoadingProjects, setIsLoadingProjects] = useState(true);
   const { toast } = useToast();
+  const [location, navigate] = useLocation();
+  
+  // Fetch projects for the filter dropdown
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        const data = await apiRequest('GET', '/api/projects') as Project[];
+        setProjects(data);
+      } catch (error) {
+        console.error('Failed to fetch projects:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load projects',
+          variant: 'destructive',
+        });
+      } finally {
+        setIsLoadingProjects(false);
+      }
+    };
+    
+    fetchProjects();
+  }, []);
   
   const handleDeleteClick = (documentId: number) => {
     setDeleteDocumentId(documentId);
@@ -130,7 +163,28 @@ const Documents: React.FC = () => {
               <h1 className="font-montserrat font-bold text-3xl text-[#0F2B46] mb-2">Documents</h1>
               <p className="text-gray-600">Upload and manage your contract documents</p>
             </div>
-            <div className="mt-4 md:mt-0">
+            <div className="flex items-center gap-4 mt-4 md:mt-0">
+              {/* Project filter */}
+              <div className="w-[200px]">
+                <Select
+                  value={selectedProjectId?.toString() || ""}
+                  onValueChange={(value) => {
+                    setSelectedProjectId(value ? parseInt(value) : undefined);
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Filter by project" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">All Projects</SelectItem>
+                    {projects.map((project) => (
+                      <SelectItem key={project.id} value={project.id.toString()}>
+                        {project.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <Button 
                 className="flex items-center"
                 onClick={() => setShowUploadModal(true)}
@@ -265,7 +319,10 @@ const Documents: React.FC = () => {
             </DialogDescription>
           </DialogHeader>
           
-          <DocumentUpload onUploadSuccess={handleUploadSuccess} />
+          <DocumentUpload 
+            onUploadSuccess={handleUploadSuccess}
+            projectId={selectedProjectId}
+          />
         </DialogContent>
       </Dialog>
       

@@ -39,9 +39,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUploadSuccess, projec
     const fetchProjects = async () => {
       setIsLoading(true);
       try {
-        const data = await apiRequest({ 
-          url: '/api/projects'
-        });
+        const data = await apiRequest('GET', '/api/projects');
         setProjects(data as Project[]);
       } catch (error) {
         console.error('Error fetching projects:', error);

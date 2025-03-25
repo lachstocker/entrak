@@ -99,17 +99,56 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getDocuments(userId?: number, projectId?: number): Promise<Document[]> {
+    // First build the query
     let query = db.select().from(documents);
     
+    // Create where clauses
+    const whereConditions = [];
+    
     if (userId !== undefined) {
-      query = query.where(eq(documents.user_id, userId));
+      whereConditions.push(eq(documents.user_id, userId));
     }
     
     if (projectId !== undefined) {
-      query = query.where(eq(documents.project_id, projectId));
+      whereConditions.push(eq(documents.project_id, projectId));
     }
     
-    return query.orderBy(desc(documents.upload_date));
+    // Apply where clauses if any
+    if (whereConditions.length > 0) {
+      if (whereConditions.length === 1) {
+        query = query.where(whereConditions[0]);
+      } else {
+        query = query.where(and(...whereConditions));
+      }
+    }
+    
+    // Execute the documents query first
+    const documentResults = await query.orderBy(desc(documents.upload_date));
+    
+    // Get associated projects for documents with project_id
+    const projectIds = documentResults
+      .filter(doc => doc.project_id !== null)
+      .map(doc => doc.project_id as number);
+    
+    // If there are documents with project_id, fetch the projects
+    if (projectIds.length > 0) {
+      const projectResults = await db
+        .select()
+        .from(projects)
+        .where(inArray(projects.id, projectIds));
+      
+      // Create a map of project id to project
+      const projectMap = new Map(projectResults.map(p => [p.id, p]));
+      
+      // Add project to documents
+      return documentResults.map(doc => ({
+        ...doc,
+        project: doc.project_id ? projectMap.get(doc.project_id) : undefined
+      }));
+    }
+    
+    // No projects to fetch
+    return documentResults;
   }
   
   // Project methods
