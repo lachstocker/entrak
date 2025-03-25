@@ -177,7 +177,12 @@ export class DatabaseStorage implements IStorage {
       }
       
       if (conditions.length > 0) {
-        query = query.where(and(...conditions));
+        if (conditions.length === 1) {
+          // If there's only one condition, no need to use 'and'
+          query = query.where(conditions[0]);
+        } else {
+          query = query.where(and(...conditions));
+        }
       }
     }
     

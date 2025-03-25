@@ -296,7 +296,7 @@ function safeJsonParseSimple(jsonString: string): any {
 }
 
 // Helper function to split text into chunks of reasonable size
-function splitTextIntoChunks(text: string, chunkSize: number = 60000): string[] {
+function splitTextIntoChunks(text: string, chunkSize: number = 150000): string[] {
   const paragraphs = text.split('\n\n');
   const chunks: string[] = [];
   let currentChunk = '';
@@ -381,7 +381,7 @@ async function processChunk(chunk: string, chunkIndex: number, totalChunks: numb
 
     const response = await anthropic.messages.create({
       model: 'claude-3-7-sonnet-20250219',
-      max_tokens: 20000, // High token limit to ensure we get full output
+      max_tokens: 30000, // Increased token limit to handle larger chunks
       system: systemPrompt,
       messages: [{ role: 'user', content: userMessage }],
     });
@@ -543,7 +543,7 @@ export async function analyzeSpecificObligation(text: string): Promise<{
   try {
     const response = await anthropic.messages.create({
       model: 'claude-3-7-sonnet-20250219',
-      max_tokens: 8000, // Increased max output tokens to 8,000
+      max_tokens: 10000, // Increased max output tokens to 10,000
       system: `
         Analyze the provided text as a potential contractual obligation.
         
