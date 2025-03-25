@@ -296,7 +296,7 @@ function safeJsonParseSimple(jsonString: string): any {
 }
 
 // Helper function to split text into chunks of reasonable size
-function splitTextIntoChunks(text: string, chunkSize: number = 150000): string[] {
+function splitTextIntoChunks(text: string, chunkSize: number = 20000): string[] {
   const paragraphs = text.split('\n\n');
   const chunks: string[] = [];
   let currentChunk = '';
@@ -328,69 +328,38 @@ function splitTextIntoChunks(text: string, chunkSize: number = 150000): string[]
 async function processChunk(chunk: string, chunkIndex: number, totalChunks: number, documentId: number): Promise<InsertObligation[]> {
   try {
     const systemPrompt = `
-      You are an expert legal analyst specializing in contract obligation extraction. 
-      Your task is to identify and extract key contractual obligations from the provided document chunk.
+      Extract contractual obligations from chunk ${chunkIndex + 1}/${totalChunks}.
+      For each obligation, provide:
+      - text: One-sentence summary 
+      - type: Category (payment, delivery, etc.)
+      - start_date: YYYY-MM-DD (if specified)
+      - due_date: YYYY-MM-DD (if specified)
+      - responsible_party: Who is responsible
+      - priority: high/medium/low
+      - original_text: Exact wording
+      - clause_number: If available
+      - section_name: If available
+      - page_number: If possible
+      - confidence_score: 0-100
       
-      IMPORTANT: You are analyzing chunk ${chunkIndex + 1} of ${totalChunks} from a larger contract document.
-      Focus only on the text provided in this chunk.
-      
-      For each obligation, extract:
-      1. Text - A one-sentence summary of the obligation (make this concise and clear)
-      2. Type - Categorize the obligation with a specific, descriptive label (e.g., payment, delivery, reporting, maintenance, compliance, confidentiality, etc.). Be specific and accurate.
-      3. Start date - When the obligation starts (if specified) in YYYY-MM-DD format
-      4. Due date - When the obligation must be fulfilled (if specified) in YYYY-MM-DD format
-      5. Responsible party - Who is responsible for fulfilling the obligation (if specified)
-      6. Priority - Must be one of: high, medium, or low based on importance and urgency
-      7. Original text - The EXACT wording from the contract (copy the complete obligation text verbatim)
-      8. Clause number - The specific clause number in the contract (if available, e.g., "Section 3.2.1" or "Clause 5")
-      9. Section name - The name or title of the section containing this obligation (if available)
-      10. Page number - Approximate page number where the obligation appears (if possible to determine)
-      11. Confidence score - Your confidence in this extraction on a scale of 0-100
-      
-      Format your response as a valid JSON object with the following structure:
-      {
-        "obligations": [
-          {
-            "text": "string", // One sentence summary
-            "type": "string", // Type of obligation (be specific)
-            "start_date": "YYYY-MM-DD", (optional)
-            "due_date": "YYYY-MM-DD", (optional)
-            "responsible_party": "string", (optional)
-            "priority": "high|medium|low",
-            "original_text": "string", // Exact wording from contract
-            "clause_number": "string", (optional)
-            "section_name": "string", (optional)
-            "page_number": number, (optional)
-            "confidence_score": number (0-100)
-          },
-          ...
-        ]
-      }
-      
-      VERY IMPORTANT: Your response MUST be valid JSON. Do not include explanations or formatting before or after the JSON.
-      Be extremely thorough and extract ALL obligations from this chunk.
-      Focus on clear, explicit obligations but don't miss anything important.
-      Capture every contractual requirement, deadline, and responsibility.
-      If dates are mentioned relatively (e.g., "within 30 days"), make your best estimate for an absolute date.
-      Include only the JSON in your response, no other text.
+      Return valid JSON only:
+      {"obligations":[{"text":"","type":"","start_date":"","due_date":"","responsible_party":"","priority":"","original_text":"","clause_number":"","section_name":"","page_number":0,"confidence_score":0}]}
+      No text before or after.
     `;
 
     const userMessage = `Here is chunk ${chunkIndex + 1} of ${totalChunks} from the contract document to analyze:\n\n${chunk}`;
 
     console.log(`Processing chunk ${chunkIndex + 1} of ${totalChunks}, size: ${chunk.length} characters`);
 
-    // Note: Anthropic recommends streaming for operations that may take longer than 10 minutes
-    // For now, we'll use a smaller chunk size to avoid timeouts
-    // In the future, we can implement streaming to handle longer documents better
+    // Standard batch processing 
     const response = await anthropic.messages.create({
       model: 'claude-3-7-sonnet-20250219',
-      max_tokens: 30000, // Increased token limit to handle larger chunks
+      max_tokens: 4000, 
       system: systemPrompt,
       messages: [{ role: 'user', content: userMessage }],
     });
-
+    
     const contentBlock = response.content[0];
-    // Check if it's a text content block
     if (contentBlock.type !== 'text') {
       throw new Error('Unexpected response format: Not a text content block');
     }
@@ -544,45 +513,40 @@ export async function analyzeSpecificObligation(text: string): Promise<{
   confidence_score: number;
 }> {
   try {
-    const response = await anthropic.messages.create({
+    // Use streaming for long-running operations
+    let completeResponse = '';
+    
+    // Create a stream
+    const stream = await anthropic.messages.create({
       model: 'claude-3-7-sonnet-20250219',
-      max_tokens: 10000, // Increased max output tokens to 10,000
+      max_tokens: 1000,
       system: `
-        Analyze the provided text as a potential contractual obligation.
-        
-        Extract and categorize it with the following fields:
-        - type: Categorize the obligation with a specific, descriptive label (e.g., payment, delivery, reporting, maintenance, compliance, confidentiality, etc.). Be specific and accurate.
-        - start_date: when the obligation starts (YYYY-MM-DD format, if specified)
-        - due_date: when it must be fulfilled (YYYY-MM-DD format, if specified)
-        - responsible_party: who is responsible (if specified)
-        - priority: MUST be one of: high, medium, or low based on importance and urgency
-        - clause_number: the specific clause number in the contract (if available, e.g., "Section 3.2.1" or "Clause 5")
-        - section_name: the name or title of the section containing this obligation (if available)
-        - confidence_score: your confidence in this analysis (0-100)
-        
-        Return only JSON in this format without explanations:
+        Analyze this text as a contractual obligation.
+        Return JSON only:
         {
-          "type": "string",
-          "start_date": "string", (optional)
-          "due_date": "string", (optional)
-          "responsible_party": "string", (optional)
-          "priority": "string",
-          "clause_number": "string", (optional)
-          "section_name": "string", (optional)
-          "confidence_score": number
+          "type": "category", 
+          "start_date": "YYYY-MM-DD", 
+          "due_date": "YYYY-MM-DD", 
+          "responsible_party": "who", 
+          "priority": "high|medium|low",
+          "clause_number": "X.X.X", 
+          "section_name": "name", 
+          "confidence_score": 0-100
         }
       `,
       messages: [{ role: 'user', content: text }],
+      stream: true,
     });
-
-    const contentBlock = response.content[0];
-    // Check if it's a text content block
-    if (contentBlock.type !== 'text') {
-      throw new Error('Unexpected response format: Not a text content block');
+    
+    // Process the stream
+    for await (const chunk of stream) {
+      if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text') {
+        completeResponse += chunk.delta.text;
+      }
     }
     
     // Use our robust JSON parsing logic for single objects
-    const result = safeJsonParseSimple(contentBlock.text);
+    const result = safeJsonParseSimple(completeResponse);
     
     // Validate date fields
     if (result.start_date) {
