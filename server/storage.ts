@@ -2,10 +2,11 @@ import {
   users, type User, type InsertUser,
   documents, type Document, type InsertDocument,
   obligations, type Obligation, type InsertObligation,
-  reminders, type Reminder, type InsertReminder
+  reminders, type Reminder, type InsertReminder,
+  projects, type Project, type InsertProject
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, like, desc, gte, lte } from "drizzle-orm";
+import { eq, and, like, desc, gte, lte, inArray } from "drizzle-orm";
 
 export interface IStorage {
   // User methods
@@ -14,9 +15,18 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, user: Partial<User>): Promise<User | undefined>;
   
+  // Project methods
+  getProject(id: number): Promise<Project | undefined>;
+  getProjects(userId?: number): Promise<Project[]>;
+  createProject(project: InsertProject): Promise<Project>;
+  updateProject(id: number, project: Partial<Project>): Promise<Project | undefined>;
+  deleteProject(id: number): Promise<boolean>;
+  getDocumentsByProject(projectId: number): Promise<Document[]>;
+  getObligationsByProject(projectId: number): Promise<Obligation[]>;
+  
   // Document methods
   getDocument(id: number): Promise<Document | undefined>;
-  getDocuments(userId?: number): Promise<Document[]>;
+  getDocuments(userId?: number, projectId?: number): Promise<Document[]>;
   createDocument(document: InsertDocument): Promise<Document>;
   updateDocument(id: number, document: Partial<Document>): Promise<Document | undefined>;
   deleteDocument(id: number): Promise<boolean>;
@@ -25,6 +35,7 @@ export interface IStorage {
   getObligation(id: number): Promise<Obligation | undefined>;
   getObligations(filters?: {
     documentId?: number;
+    projectId?: number;
     type?: string;
     status?: string;
     dueDateStart?: Date;
@@ -87,11 +98,96 @@ export class DatabaseStorage implements IStorage {
     return document;
   }
 
-  async getDocuments(userId?: number): Promise<Document[]> {
+  async getDocuments(userId?: number, projectId?: number): Promise<Document[]> {
+    let query = db.select().from(documents);
+    
     if (userId !== undefined) {
-      return db.select().from(documents).where(eq(documents.user_id, userId)).orderBy(desc(documents.upload_date));
+      query = query.where(eq(documents.user_id, userId));
     }
-    return db.select().from(documents).orderBy(desc(documents.upload_date));
+    
+    if (projectId !== undefined) {
+      query = query.where(eq(documents.project_id, projectId));
+    }
+    
+    return query.orderBy(desc(documents.upload_date));
+  }
+  
+  // Project methods
+  async getProject(id: number): Promise<Project | undefined> {
+    const [project] = await db.select().from(projects).where(eq(projects.id, id));
+    return project;
+  }
+
+  async getProjects(userId?: number): Promise<Project[]> {
+    let query = db.select().from(projects);
+    
+    if (userId !== undefined) {
+      query = query.where(eq(projects.user_id, userId));
+    }
+    
+    return query.orderBy(desc(projects.created_at));
+  }
+
+  async createProject(insertProject: InsertProject): Promise<Project> {
+    const [project] = await db
+      .insert(projects)
+      .values({
+        ...insertProject,
+        description: insertProject.description ?? null
+      })
+      .returning();
+    return project;
+  }
+
+  async updateProject(id: number, projectData: Partial<Project>): Promise<Project | undefined> {
+    const [updatedProject] = await db
+      .update(projects)
+      .set({
+        ...projectData,
+        last_modified: new Date()
+      })
+      .where(eq(projects.id, id))
+      .returning();
+    return updatedProject;
+  }
+
+  async deleteProject(id: number): Promise<boolean> {
+    // First update all documents to remove project association
+    await db
+      .update(documents)
+      .set({ project_id: null })
+      .where(eq(documents.project_id, id));
+      
+    // Then delete the project
+    await db.delete(projects).where(eq(projects.id, id));
+    return true;
+  }
+
+  async getDocumentsByProject(projectId: number): Promise<Document[]> {
+    return db
+      .select()
+      .from(documents)
+      .where(eq(documents.project_id, projectId))
+      .orderBy(desc(documents.upload_date));
+  }
+
+  async getObligationsByProject(projectId: number): Promise<Obligation[]> {
+    // Get all documents in the project
+    const projectDocuments = await this.getDocumentsByProject(projectId);
+    
+    if (projectDocuments.length === 0) {
+      return [];
+    }
+    
+    // Get document IDs
+    const documentIds = projectDocuments.map(doc => doc.id);
+    
+    // Get all obligations for those documents
+    return db
+      .select()
+      .from(obligations)
+      .where(inArray(obligations.document_id, documentIds))
+      .orderBy(obligations.due_date);
   }
 
   async createDocument(insertDocument: InsertDocument): Promise<Document> {
@@ -139,6 +235,7 @@ export class DatabaseStorage implements IStorage {
 
   async getObligations(filters?: {
     documentId?: number;
+    projectId?: number;
     type?: string;
     status?: string;
     dueDateStart?: Date;
@@ -152,6 +249,18 @@ export class DatabaseStorage implements IStorage {
       
       if (filters.documentId !== undefined) {
         conditions.push(eq(obligations.document_id, filters.documentId));
+      }
+      
+      if (filters.projectId !== undefined) {
+        // Handle project ID filter by getting all documents in the project first
+        const projectDocuments = await this.getDocumentsByProject(filters.projectId);
+        if (projectDocuments.length > 0) {
+          const documentIds = projectDocuments.map(doc => doc.id);
+          conditions.push(inArray(obligations.document_id, documentIds));
+        } else {
+          // If no documents in project, return empty result early
+          return [];
+        }
       }
       
       if (filters.type !== undefined && filters.type !== '') {

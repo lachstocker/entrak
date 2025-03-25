@@ -181,6 +181,12 @@ export const insertReminderSchema = createInsertSchema(reminders).omit({
   id: true
 });
 
+export const insertProjectSchema = createInsertSchema(projects).omit({
+  id: true,
+  created_at: true,
+  last_modified: true
+});
+
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -193,3 +199,6 @@ export type Obligation = typeof obligations.$inferSelect;
 
 export type InsertReminder = z.infer<typeof insertReminderSchema>;
 export type Reminder = typeof reminders.$inferSelect;
+
+export type InsertProject = z.infer<typeof insertProjectSchema>;
+export type Project = typeof projects.$inferSelect;
