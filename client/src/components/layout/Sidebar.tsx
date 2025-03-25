@@ -5,7 +5,8 @@ import {
   FileText, 
   ClipboardList, 
   Calendar, 
-  BarChart3, 
+  BarChart3,
+  FolderKanban,
   Settings, 
   Zap 
 } from 'lucide-react';
@@ -66,6 +67,14 @@ const Sidebar: React.FC = () => {
             isActive={location === '/obligations'}
           >
             Obligations
+          </NavItem>
+          
+          <NavItem 
+            href="/projects" 
+            icon={<FolderKanban size={20} />} 
+            isActive={location === '/projects'}
+          >
+            Projects
           </NavItem>
           
           <NavItem 

@@ -6,6 +6,7 @@ import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/Dashboard";
 import Documents from "@/pages/Documents";
 import Obligations from "@/pages/Obligations";
+import Projects from "@/pages/Projects";
 import CalendarView from "@/pages/CalendarView";
 import Analytics from "@/pages/Analytics";
 import Settings from "@/pages/Settings";
@@ -17,6 +18,7 @@ function Router() {
       <Route path="/" component={Dashboard} />
       <Route path="/documents" component={Documents} />
       <Route path="/obligations" component={Obligations} />
+      <Route path="/projects" component={Projects} />
       <Route path="/calendar" component={CalendarView} />
       <Route path="/analytics" component={Analytics} />
       <Route path="/settings" component={Settings} />
