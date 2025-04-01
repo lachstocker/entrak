@@ -27,7 +27,7 @@ import { Input } from '@/components/ui/input';
 import { NOTIFICATION_METHODS } from '@/constants';
 
 const Obligations: React.FC = () => {
-  const [filters, setFilters] = useState<FilterState>({ type: 'all', status: 'all' });
+  const [filters, setFilters] = useState<FilterState>({ status: 'all' });
   const { obligations, isLoading, error } = useObligations(filters);
   const [selectedObligation, setSelectedObligation] = useState<Obligation | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -54,7 +54,11 @@ const Obligations: React.FC = () => {
   
   const handleEditSave = async (updatedObligation: Obligation) => {
     try {
-      await apiRequest('PUT', `/api/obligations/${updatedObligation.id}`, updatedObligation);
+      await apiRequest({
+        method: 'PUT',
+        url: `/api/obligations/${updatedObligation.id}`,
+        data: updatedObligation
+      });
       
       toast({
         title: 'Obligation updated',
@@ -77,14 +81,10 @@ const Obligations: React.FC = () => {
   const handleSetReminder = (obligation: Obligation) => {
     setSelectedObligation(obligation);
     
-    // Set default reminder date to 1 day before due date if available
-    if (obligation.due_date) {
-      const dueDate = new Date(obligation.due_date);
-      dueDate.setDate(dueDate.getDate() - 1);
-      setReminderDate(dueDate.toISOString().split('T')[0]);
-    } else {
-      setReminderDate('');
-    }
+    // Set default reminder date to tomorrow since due_date is no longer available
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    setReminderDate(tomorrow.toISOString().split('T')[0]);
     
     setReminderMethod('in-app');
     setReminderMessage(`Reminder: ${obligation.text}`);
@@ -97,13 +97,17 @@ const Obligations: React.FC = () => {
     try {
       setIsSavingReminder(true);
       
-      await apiRequest('POST', '/api/reminders', {
-        obligation_id: selectedObligation.id,
-        user_id: 1, // Using default user ID
-        reminder_date: new Date(reminderDate).toISOString(),
-        notification_method: reminderMethod,
-        message: reminderMessage,
-        active: true
+      await apiRequest({
+        method: 'POST',
+        url: '/api/reminders',
+        data: {
+          obligation_id: selectedObligation.id,
+          user_id: 1, // Using default user ID
+          reminder_date: new Date(reminderDate).toISOString(),
+          notification_method: reminderMethod,
+          message: reminderMessage,
+          active: true
+        }
       });
       
       toast({
@@ -254,33 +258,13 @@ const Obligations: React.FC = () => {
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <h3 className="text-sm font-medium text-gray-500">Type</h3>
-                  <p className="mt-1">{selectedObligation.type.charAt(0).toUpperCase() + selectedObligation.type.slice(1)}</p>
-                </div>
-                
-                <div>
                   <h3 className="text-sm font-medium text-gray-500">Status</h3>
                   <p className="mt-1">{selectedObligation.status.charAt(0).toUpperCase() + selectedObligation.status.slice(1)}</p>
                 </div>
                 
                 <div>
-                  <h3 className="text-sm font-medium text-gray-500">Due Date</h3>
-                  <p className="mt-1">{selectedObligation.due_date ? new Date(selectedObligation.due_date).toLocaleDateString() : 'Not specified'}</p>
-                </div>
-                
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500">Priority</h3>
-                  <p className="mt-1">{selectedObligation.priority.charAt(0).toUpperCase() + selectedObligation.priority.slice(1)}</p>
-                </div>
-                
-                <div>
                   <h3 className="text-sm font-medium text-gray-500">Responsible Party</h3>
                   <p className="mt-1">{selectedObligation.responsible_party || 'Not assigned'}</p>
-                </div>
-                
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500">AI Confidence Score</h3>
-                  <p className="mt-1">{selectedObligation.confidence_score ? `${selectedObligation.confidence_score}%` : 'N/A'}</p>
                 </div>
 
                 <div>
