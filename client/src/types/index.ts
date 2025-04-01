@@ -24,6 +24,12 @@ export interface Obligation {
   clause_number?: string;
   section_name?: string;
   page_number?: number;
+  is_recurring?: boolean;
+  recurrence_type?: 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom';
+  recurrence_interval?: number;
+  recurrence_day?: number;
+  recurrence_month?: number;
+  recurrence_custom_text?: string;
   created_at: string;
   last_modified: string;
   created_by?: number;

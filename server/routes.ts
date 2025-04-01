@@ -465,10 +465,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const filters: {
         documentId?: number;
         projectId?: number;
-        type?: string;
         status?: string;
-        dueDateStart?: Date;
-        dueDateEnd?: Date;
         responsibleParty?: string;
       } = {};
       
@@ -478,10 +475,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (req.query.projectId) {
         filters.projectId = parseInt(req.query.projectId as string);
-      }
-      
-      if (req.query.type) {
-        filters.type = req.query.type as string;
       }
       
       if (req.query.status) {

@@ -36,10 +36,7 @@ export interface IStorage {
   getObligations(filters?: {
     documentId?: number;
     projectId?: number;
-    type?: string;
     status?: string;
-    dueDateStart?: Date;
-    dueDateEnd?: Date;
     responsibleParty?: string;
   }): Promise<Obligation[]>;
   getObligationsByDocument(documentId: number): Promise<Obligation[]>;
@@ -226,7 +223,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(obligations)
       .where(inArray(obligations.document_id, documentIds))
-      .orderBy(obligations.due_date);
+      .orderBy(obligations.id);
   }
 
   async createDocument(insertDocument: InsertDocument): Promise<Document> {

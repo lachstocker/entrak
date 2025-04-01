@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Dialog,
   DialogContent,
@@ -17,8 +17,9 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Obligation } from '@/types';
-import { OBLIGATION_STATUSES, RESPONSIBLE_PARTIES } from '@/constants';
+import { OBLIGATION_STATUSES, RESPONSIBLE_PARTIES, RECURRENCE_TYPES, MONTHS, WEEKDAYS } from '@/constants';
 
 interface EditObligationDialogProps {
   isOpen: boolean;
@@ -39,11 +40,43 @@ const EditObligationDialog: React.FC<EditObligationDialogProps> = ({
   const [notes, setNotes] = useState(obligation.original_text || '');
   const [clauseNumber, setClauseNumber] = useState(obligation.clause_number || '');
   const [sectionName, setSectionName] = useState(obligation.section_name || '');
+  const [isRecurring, setIsRecurring] = useState(obligation.is_recurring || false);
+  const [recurrenceType, setRecurrenceType] = useState(obligation.recurrence_type || 'none');
+  const [recurrenceInterval, setRecurrenceInterval] = useState(obligation.recurrence_interval?.toString() || '1');
+  const [recurrenceDay, setRecurrenceDay] = useState(obligation.recurrence_day?.toString() || '');
+  const [recurrenceMonth, setRecurrenceMonth] = useState(obligation.recurrence_month?.toString() || '');
+  const [recurrenceCustomText, setRecurrenceCustomText] = useState(obligation.recurrence_custom_text || '');
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Reset recurrence fields when recurrence type changes
+  useEffect(() => {
+    if (recurrenceType === 'none') {
+      setIsRecurring(false);
+    } else if (recurrenceType !== 'none' && !isRecurring) {
+      setIsRecurring(true);
+    }
+  }, [recurrenceType]);
+  
+  // Update recurrence type when isRecurring changes
+  useEffect(() => {
+    if (!isRecurring && recurrenceType !== 'none') {
+      setRecurrenceType('none');
+    } else if (isRecurring && recurrenceType === 'none') {
+      setRecurrenceType('monthly');
+    }
+  }, [isRecurring]);
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
+    
+    // Convert string form values to appropriate types
+    const recurrenceIntervalNum = recurrenceInterval ? parseInt(recurrenceInterval, 10) : undefined;
+    const recurrenceDayNum = recurrenceDay ? parseInt(recurrenceDay, 10) : undefined;
+    const recurrenceMonthNum = recurrenceMonth ? parseInt(recurrenceMonth, 10) : undefined;
+    
+    // If not recurring, make sure all recurrence fields are set to default values
+    const finalRecurrenceType = isRecurring ? recurrenceType : 'none';
     
     const updatedObligation: Obligation = {
       ...obligation,
@@ -53,6 +86,12 @@ const EditObligationDialog: React.FC<EditObligationDialogProps> = ({
       original_text: notes || undefined,
       clause_number: clauseNumber || undefined,
       section_name: sectionName || undefined,
+      is_recurring: isRecurring,
+      recurrence_type: finalRecurrenceType as any,
+      recurrence_interval: isRecurring && recurrenceIntervalNum ? recurrenceIntervalNum : undefined,
+      recurrence_day: isRecurring && recurrenceDayNum ? recurrenceDayNum : undefined,
+      recurrence_month: isRecurring && recurrenceMonthNum ? recurrenceMonthNum : undefined,
+      recurrence_custom_text: isRecurring && recurrenceType === 'custom' ? recurrenceCustomText : undefined,
       modified_by: 1 // Default user ID
     };
     
@@ -157,6 +196,155 @@ const EditObligationDialog: React.FC<EditObligationDialogProps> = ({
                 placeholder="All contractual clause wording for the obligation"
                 className="w-full border border-gray-300 rounded-md px-4 py-2 focus:border-[#26E07F] focus:ring focus:ring-[#26E07F] focus:ring-opacity-50"
               />
+            </div>
+            
+            {/* Recurrence Section */}
+            <div className="md:col-span-2 border-t pt-4 mt-2">
+              <h3 className="font-medium text-lg mb-4">Recurrence Settings</h3>
+              
+              <div className="flex items-center space-x-2 mb-4">
+                <Switch 
+                  id="is-recurring" 
+                  checked={isRecurring} 
+                  onCheckedChange={setIsRecurring} 
+                />
+                <Label htmlFor="is-recurring">This obligation is recurring</Label>
+              </div>
+              
+              {isRecurring && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="recurrence-type" className="block text-sm font-semibold mb-2">
+                      Recurrence Pattern
+                    </Label>
+                    <Select value={recurrenceType} onValueChange={setRecurrenceType}>
+                      <SelectTrigger id="recurrence-type">
+                        <SelectValue placeholder="Select recurrence type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {RECURRENCE_TYPES.filter(rt => rt.value !== 'none').map(type => (
+                          <SelectItem key={type.value} value={type.value}>
+                            {type.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {recurrenceType !== 'custom' && recurrenceType !== 'none' && (
+                    <div>
+                      <Label htmlFor="recurrence-interval" className="block text-sm font-semibold mb-2">
+                        Repeat every
+                      </Label>
+                      <div className="flex items-center space-x-2">
+                        <Input
+                          id="recurrence-interval"
+                          type="number"
+                          min="1"
+                          value={recurrenceInterval}
+                          onChange={(e) => setRecurrenceInterval(e.target.value)}
+                          className="w-20"
+                        />
+                        <span>{recurrenceType === 'daily' 
+                          ? 'day(s)' 
+                          : recurrenceType === 'weekly' 
+                            ? 'week(s)' 
+                            : recurrenceType === 'monthly' 
+                              ? 'month(s)' 
+                              : 'year(s)'}</span>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {recurrenceType === 'weekly' && (
+                    <div className="md:col-span-2">
+                      <Label className="block text-sm font-semibold mb-2">
+                        On which day(s)
+                      </Label>
+                      <Select value={recurrenceDay.toString()} onValueChange={setRecurrenceDay}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select day" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {WEEKDAYS.map((day, index) => (
+                            <SelectItem key={index} value={index.toString()}>
+                              {day}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  
+                  {recurrenceType === 'monthly' && (
+                    <div>
+                      <Label htmlFor="recurrence-day-month" className="block text-sm font-semibold mb-2">
+                        Day of month
+                      </Label>
+                      <Input
+                        id="recurrence-day-month"
+                        type="number"
+                        min="1"
+                        max="31"
+                        value={recurrenceDay}
+                        onChange={(e) => setRecurrenceDay(e.target.value)}
+                        placeholder="1-31"
+                      />
+                    </div>
+                  )}
+                  
+                  {recurrenceType === 'yearly' && (
+                    <>
+                      <div>
+                        <Label htmlFor="recurrence-month" className="block text-sm font-semibold mb-2">
+                          Month
+                        </Label>
+                        <Select value={recurrenceMonth.toString()} onValueChange={setRecurrenceMonth}>
+                          <SelectTrigger id="recurrence-month">
+                            <SelectValue placeholder="Select month" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {MONTHS.map((month, index) => (
+                              <SelectItem key={index} value={(index + 1).toString()}>
+                                {month}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label htmlFor="recurrence-day-year" className="block text-sm font-semibold mb-2">
+                          Day
+                        </Label>
+                        <Input
+                          id="recurrence-day-year"
+                          type="number"
+                          min="1"
+                          max="31"
+                          value={recurrenceDay}
+                          onChange={(e) => setRecurrenceDay(e.target.value)}
+                          placeholder="1-31"
+                        />
+                      </div>
+                    </>
+                  )}
+                  
+                  {recurrenceType === 'custom' && (
+                    <div className="md:col-span-2">
+                      <Label htmlFor="recurrence-custom" className="block text-sm font-semibold mb-2">
+                        Custom Recurrence Pattern
+                      </Label>
+                      <Textarea
+                        id="recurrence-custom"
+                        value={recurrenceCustomText}
+                        onChange={(e) => setRecurrenceCustomText(e.target.value)}
+                        placeholder="Describe the recurrence pattern (e.g., 'Every third Tuesday of the month')"
+                        rows={2}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
           

@@ -22,6 +22,15 @@ export const fileTypeEnum = pgEnum('file_type', [
   'txt'
 ]);
 
+export const recurrenceTypeEnum = pgEnum('recurrence_type', [
+  'none',
+  'daily',
+  'weekly',
+  'monthly',
+  'yearly',
+  'custom'
+]);
+
 // Users table
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -68,10 +77,19 @@ export const obligations = pgTable("obligations", {
   text: text("text").notNull(), // One sentence summary of the obligation
   responsible_party: text("responsible_party"),
   status: obligationStatusEnum("status").default("pending").notNull(),
-  original_text: text("original_text"), // Exact wording from the contract
+  original_text: text("original_text"), // All contractual clause wording for the obligation
   clause_number: text("clause_number"), // Clause number from the contract
   section_name: text("section_name"), // Section name from the contract
   page_number: integer("page_number"),
+  // Recurrence fields
+  is_recurring: boolean("is_recurring").default(false).notNull(),
+  recurrence_type: recurrenceTypeEnum("recurrence_type").default("none").notNull(),
+  recurrence_interval: integer("recurrence_interval"), // For example, every 2 weeks
+  recurrence_day: integer("recurrence_day"), // Day of month/week (1-31 or 0-6 for Sunday-Saturday)
+  recurrence_month: integer("recurrence_month"), // Month of year (1-12)
+  recurrence_end_date: timestamp("recurrence_end_date"), // When recurrence ends, if applicable
+  recurrence_custom_text: text("recurrence_custom_text"), // Description for custom recurrence patterns
+  // Standard fields
   created_at: timestamp("created_at").defaultNow().notNull(),
   last_modified: timestamp("last_modified").defaultNow().notNull(),
   created_by: integer("created_by").references(() => users.id),

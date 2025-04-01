@@ -15,6 +15,13 @@ interface ExtractedObligationsResponse {
     clause_number?: string; // Clause number from the contract
     section_name?: string; // Section name from the contract
     page_number?: number;
+    // Recurrence information
+    is_recurring?: boolean; // Whether the obligation recurs
+    recurrence_type?: 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom'; // Type of recurrence
+    recurrence_interval?: number; // For example, every 2 weeks
+    recurrence_day?: number; // Day of month/week (1-31 or 0-6 for Sunday-Saturday)
+    recurrence_month?: number; // Month of year (1-12)
+    recurrence_custom_text?: string; // Description for custom recurrence patterns
   }[];
 }
 
@@ -158,7 +165,17 @@ function safeJsonParse(jsonString: string): ExtractedObligationsResponse {
             }
           })
           .filter(Boolean)
-          .filter(obj => obj.text && obj.original_text); // Must have at least these fields
+          .filter(obj => obj.text && obj.original_text) // Must have at least these fields
+          .map(obj => {
+            // Ensure recurrence fields are properly set
+            if (obj.is_recurring === undefined) {
+              obj.is_recurring = false;
+            }
+            if (obj.recurrence_type === undefined) {
+              obj.recurrence_type = 'none';
+            }
+            return obj;
+          })
         
         if (obligations.length > 0) {
           return { obligations };
@@ -205,6 +222,13 @@ function extractPotentialJsonObjects(text: string): any[] {
           // Check if it has the minimum fields we expect for an obligation
           if (parsed.text && typeof parsed.text === 'string' &&
               parsed.original_text && typeof parsed.original_text === 'string') {
+            // Ensure recurrence fields are properly set
+            if (parsed.is_recurring === undefined) {
+              parsed.is_recurring = false;
+            }
+            if (parsed.recurrence_type === undefined) {
+              parsed.recurrence_type = 'none';
+            }
             results.push(parsed);
           }
         } catch (e) {
@@ -264,12 +288,28 @@ function safeJsonParseSimple(jsonString: string): any {
       const clauseNumberMatch = cleanJson.match(/"clause_number"\s*:\s*"([^"]*)"/);
       const sectionNameMatch = cleanJson.match(/"section_name"\s*:\s*"([^"]*)"/);
       
+      // Recurrence fields
+      const isRecurringMatch = cleanJson.match(/"is_recurring"\s*:\s*(true|false)/);
+      const recurrenceTypeMatch = cleanJson.match(/"recurrence_type"\s*:\s*"([^"]*)"/);
+      const recurrenceIntervalMatch = cleanJson.match(/"recurrence_interval"\s*:\s*(\d+)/);
+      const recurrenceDayMatch = cleanJson.match(/"recurrence_day"\s*:\s*(\d+)/);
+      const recurrenceMonthMatch = cleanJson.match(/"recurrence_month"\s*:\s*(\d+)/);
+      const recurrenceCustomTextMatch = cleanJson.match(/"recurrence_custom_text"\s*:\s*"([^"]*)"/);
+      
       // Construct a valid minimal object
       const result: any = {};
       
       if (responsiblePartyMatch) result.responsible_party = responsiblePartyMatch[1];
       if (clauseNumberMatch) result.clause_number = clauseNumberMatch[1];
       if (sectionNameMatch) result.section_name = sectionNameMatch[1];
+      
+      // Add recurrence fields if found
+      if (isRecurringMatch) result.is_recurring = isRecurringMatch[1] === 'true';
+      if (recurrenceTypeMatch) result.recurrence_type = recurrenceTypeMatch[1];
+      if (recurrenceIntervalMatch) result.recurrence_interval = parseInt(recurrenceIntervalMatch[1], 10);
+      if (recurrenceDayMatch) result.recurrence_day = parseInt(recurrenceDayMatch[1], 10);
+      if (recurrenceMonthMatch) result.recurrence_month = parseInt(recurrenceMonthMatch[1], 10);
+      if (recurrenceCustomTextMatch) result.recurrence_custom_text = recurrenceCustomTextMatch[1];
       
       return result;
     } catch (finalError) {
@@ -321,8 +361,16 @@ async function processChunk(chunk: string, chunkIndex: number, totalChunks: numb
       - section_name: If available
       - page_number: If possible
       
+      Also analyze if the obligation recurs (weekly, monthly, yearly, etc):
+      - is_recurring: true/false (whether the obligation has recurring requirements)
+      - recurrence_type: one of [none, daily, weekly, monthly, yearly, custom]
+      - recurrence_interval: number (e.g., every 2 weeks = 2, every 3 months = 3)
+      - recurrence_day: day number if applicable (1-31 for day of month or 0-6 for day of week Sun-Sat)
+      - recurrence_month: month number if applicable (1-12)
+      - recurrence_custom_text: description of custom recurrence pattern
+      
       Return valid JSON only:
-      {"obligations":[{"text":"","responsible_party":"","original_text":"","clause_number":"","section_name":"","page_number":0}]}
+      {"obligations":[{"text":"","responsible_party":"","original_text":"","clause_number":"","section_name":"","page_number":0,"is_recurring":false,"recurrence_type":"none"}]}
       No text before or after.
     `;
 
@@ -355,7 +403,10 @@ async function processChunk(chunk: string, chunkIndex: number, totalChunks: numb
         original_text: obligation.original_text, // All contractual clause wording for the obligation
         status: 'pending',
         created_by: 1, // Default user ID
-        modified_by: 1 // Default user ID
+        modified_by: 1, // Default user ID
+        // Default recurrence to false if not specified
+        is_recurring: obligation.is_recurring ?? false,
+        recurrence_type: (obligation.recurrence_type as any) ?? 'none'
       };
       
       if (obligation.responsible_party) {
@@ -373,6 +424,23 @@ async function processChunk(chunk: string, chunkIndex: number, totalChunks: numb
       
       if (obligation.section_name) {
         insertObligation.section_name = obligation.section_name;
+      }
+      
+      // Add recurrence fields if present
+      if (obligation.recurrence_interval) {
+        insertObligation.recurrence_interval = obligation.recurrence_interval;
+      }
+      
+      if (obligation.recurrence_day) {
+        insertObligation.recurrence_day = obligation.recurrence_day;
+      }
+      
+      if (obligation.recurrence_month) {
+        insertObligation.recurrence_month = obligation.recurrence_month;
+      }
+      
+      if (obligation.recurrence_custom_text) {
+        insertObligation.recurrence_custom_text = obligation.recurrence_custom_text;
       }
       
       return insertObligation;
@@ -453,6 +521,12 @@ export async function analyzeSpecificObligation(text: string): Promise<{
   responsible_party?: string;
   clause_number?: string;
   section_name?: string;
+  is_recurring?: boolean;
+  recurrence_type?: 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom';
+  recurrence_interval?: number;
+  recurrence_day?: number;
+  recurrence_month?: number;
+  recurrence_custom_text?: string;
 }> {
   try {
     // Standard batch processing
@@ -461,11 +535,18 @@ export async function analyzeSpecificObligation(text: string): Promise<{
       max_tokens: 1000,
       system: `
         Analyze this text as a contractual obligation.
+        Determine if it is recurring (weekly, monthly, yearly, etc.).
         Return JSON only:
         {
           "responsible_party": "who",
           "clause_number": "X.X.X", 
-          "section_name": "name"
+          "section_name": "name",
+          "is_recurring": true/false,
+          "recurrence_type": "none"/"daily"/"weekly"/"monthly"/"yearly"/"custom",
+          "recurrence_interval": number (e.g., every 2 weeks = 2),
+          "recurrence_day": number (day of month/week),
+          "recurrence_month": number (month of year 1-12),
+          "recurrence_custom_text": "description of pattern"
         }
       `,
       messages: [{ role: 'user', content: text }],

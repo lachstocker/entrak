@@ -37,6 +37,15 @@ export const NOTIFICATION_METHODS = [
   { value: 'both', label: 'Both' }
 ];
 
+export const RECURRENCE_TYPES = [
+  { value: 'none', label: 'None' },
+  { value: 'daily', label: 'Daily' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'yearly', label: 'Yearly' },
+  { value: 'custom', label: 'Custom' }
+];
+
 export const MONTHS = [
   'January',
   'February',
