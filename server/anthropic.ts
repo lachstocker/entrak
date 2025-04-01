@@ -17,7 +17,7 @@ interface ExtractedObligationsResponse {
     page_number?: number;
     // Recurrence information
     is_recurring?: boolean; // Whether the obligation recurs
-    recurrence_type?: 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom'; // Type of recurrence
+    recurrence_type?: 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom' | 'ongoing'; // Type of recurrence
     recurrence_interval?: number; // For example, every 2 weeks
     recurrence_day?: number; // Day of month/week (1-31 or 0-6 for Sunday-Saturday)
     recurrence_month?: number; // Month of year (1-12)

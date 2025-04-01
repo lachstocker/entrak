@@ -41,7 +41,7 @@ const EditObligationDialog: React.FC<EditObligationDialogProps> = ({
   const [clauseNumber, setClauseNumber] = useState(obligation.clause_number || '');
   const [sectionName, setSectionName] = useState(obligation.section_name || '');
   const [isRecurring, setIsRecurring] = useState(obligation.is_recurring || false);
-  const [recurrenceType, setRecurrenceType] = useState(obligation.recurrence_type || 'none');
+  const [recurrenceType, setRecurrenceType] = useState<string>(obligation.recurrence_type || 'none');
   const [recurrenceInterval, setRecurrenceInterval] = useState(obligation.recurrence_interval?.toString() || '1');
   const [recurrenceDay, setRecurrenceDay] = useState(obligation.recurrence_day?.toString() || '');
   const [recurrenceMonth, setRecurrenceMonth] = useState(obligation.recurrence_month?.toString() || '');
@@ -52,7 +52,7 @@ const EditObligationDialog: React.FC<EditObligationDialogProps> = ({
   useEffect(() => {
     if (recurrenceType === 'none') {
       setIsRecurring(false);
-    } else if (recurrenceType !== 'none' && !isRecurring) {
+    } else if (!isRecurring) {
       setIsRecurring(true);
     }
   }, [recurrenceType]);
@@ -217,7 +217,10 @@ const EditObligationDialog: React.FC<EditObligationDialogProps> = ({
                     <Label htmlFor="recurrence-type" className="block text-sm font-semibold mb-2">
                       Recurrence Pattern
                     </Label>
-                    <Select value={recurrenceType} onValueChange={setRecurrenceType}>
+                    <Select 
+                      value={recurrenceType} 
+                      onValueChange={(value: string) => setRecurrenceType(value)}
+                    >
                       <SelectTrigger id="recurrence-type">
                         <SelectValue placeholder="Select recurrence type" />
                       </SelectTrigger>
@@ -231,7 +234,7 @@ const EditObligationDialog: React.FC<EditObligationDialogProps> = ({
                     </Select>
                   </div>
                   
-                  {recurrenceType !== 'custom' && recurrenceType !== 'none' && (
+                  {recurrenceType !== 'custom' && recurrenceType !== 'none' && recurrenceType !== 'ongoing' && (
                     <div>
                       <Label htmlFor="recurrence-interval" className="block text-sm font-semibold mb-2">
                         Repeat every
@@ -253,6 +256,15 @@ const EditObligationDialog: React.FC<EditObligationDialogProps> = ({
                               ? 'month(s)' 
                               : 'year(s)'}</span>
                       </div>
+                    </div>
+                  )}
+                  
+                  {recurrenceType === 'ongoing' && (
+                    <div className="md:col-span-2">
+                      <p className="text-sm text-gray-600">
+                        This obligation is ongoing without a specific recurring schedule. 
+                        It continues indefinitely until explicitly marked as completed.
+                      </p>
                     </div>
                   )}
                   

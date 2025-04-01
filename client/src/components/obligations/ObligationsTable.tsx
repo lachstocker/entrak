@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { getInitials } from '@/lib/utils';
 import { Obligation } from '@/types';
 import EditObligationDialog from './EditObligationDialog';
+import { Clock } from 'lucide-react';
 
 interface ObligationsTableProps {
   obligations: Obligation[];
@@ -91,6 +92,72 @@ const ObligationsTable: React.FC<ObligationsTableProps> = ({
     return colors[hash % colors.length];
   };
   
+  const getRecurrenceInfo = (obligation: Obligation): JSX.Element | null => {
+    if (!obligation.is_recurring || obligation.recurrence_type === 'none') {
+      return null;
+    }
+    
+    if (obligation.recurrence_type && obligation.recurrence_type === 'ongoing') {
+      return (
+        <div className="flex items-center text-xs text-blue-600 mt-1">
+          <Clock size={12} className="mr-1" />
+          <span>Ongoing obligation</span>
+        </div>
+      );
+    }
+    
+    if (obligation.recurrence_type === 'custom' && obligation.recurrence_custom_text) {
+      return (
+        <div className="flex items-center text-xs text-blue-600 mt-1">
+          <Clock size={12} className="mr-1" />
+          <span>{obligation.recurrence_custom_text}</span>
+        </div>
+      );
+    }
+    
+    let recurrenceText = '';
+    
+    if (obligation.recurrence_interval && obligation.recurrence_interval > 1) {
+      recurrenceText += `Every ${obligation.recurrence_interval} `;
+    } else {
+      recurrenceText += 'Every ';
+    }
+    
+    switch (obligation.recurrence_type) {
+      case 'daily':
+        recurrenceText += obligation.recurrence_interval && obligation.recurrence_interval > 1 ? 'days' : 'day';
+        break;
+      case 'weekly':
+        recurrenceText += obligation.recurrence_interval && obligation.recurrence_interval > 1 ? 'weeks' : 'week';
+        if (obligation.recurrence_day !== undefined && obligation.recurrence_day >= 0 && obligation.recurrence_day <= 6) {
+          const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+          recurrenceText += ` on ${weekdays[obligation.recurrence_day]}`;
+        }
+        break;
+      case 'monthly':
+        recurrenceText += obligation.recurrence_interval && obligation.recurrence_interval > 1 ? 'months' : 'month';
+        if (obligation.recurrence_day) {
+          recurrenceText += ` on day ${obligation.recurrence_day}`;
+        }
+        break;
+      case 'yearly':
+        recurrenceText += obligation.recurrence_interval && obligation.recurrence_interval > 1 ? 'years' : 'year';
+        if (obligation.recurrence_month && obligation.recurrence_day) {
+          const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+          const monthName = months[obligation.recurrence_month - 1] || '';
+          recurrenceText += ` on ${monthName} ${obligation.recurrence_day}`;
+        }
+        break;
+    }
+    
+    return (
+      <div className="flex items-center text-xs text-blue-600 mt-1">
+        <Clock size={12} className="mr-1" />
+        <span>{recurrenceText}</span>
+      </div>
+    );
+  };
+  
   return (
     <>
       <div className="overflow-x-auto">
@@ -131,6 +198,7 @@ const ObligationsTable: React.FC<ObligationsTableProps> = ({
                         </span>
                       )}
                     </div>
+                    {getRecurrenceInfo(obligation)}
                   </TableCell>
                   <TableCell className="whitespace-nowrap">
                     <div className="flex items-center">
