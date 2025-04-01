@@ -10,16 +10,11 @@ const anthropic = new Anthropic({
 interface ExtractedObligationsResponse {
   obligations: {
     text: string; // One sentence summary of the obligation
-    type: string;
-    start_date?: string;
-    due_date?: string;
     responsible_party?: string;
-    priority?: string;
     original_text: string; // Exact wording from the contract
     clause_number?: string; // Clause number from the contract
     section_name?: string; // Section name from the contract
     page_number?: number;
-    confidence_score: number;
   }[];
 }
 
@@ -163,7 +158,7 @@ function safeJsonParse(jsonString: string): ExtractedObligationsResponse {
             }
           })
           .filter(Boolean)
-          .filter(obj => obj.text && obj.type); // Must have at least these fields
+          .filter(obj => obj.text && obj.original_text); // Must have at least these fields
         
         if (obligations.length > 0) {
           return { obligations };
@@ -209,7 +204,7 @@ function extractPotentialJsonObjects(text: string): any[] {
           const parsed = JSON.parse(fixedObject);
           // Check if it has the minimum fields we expect for an obligation
           if (parsed.text && typeof parsed.text === 'string' &&
-              parsed.type && typeof parsed.type === 'string') {
+              parsed.original_text && typeof parsed.original_text === 'string') {
             results.push(parsed);
           }
         } catch (e) {
@@ -331,19 +326,14 @@ async function processChunk(chunk: string, chunkIndex: number, totalChunks: numb
       Extract contractual obligations from chunk ${chunkIndex + 1}/${totalChunks}.
       For each obligation, provide:
       - text: One-sentence summary 
-      - type: Category (payment, delivery, etc.)
-      - start_date: YYYY-MM-DD (if specified)
-      - due_date: YYYY-MM-DD (if specified)
       - responsible_party: Who is responsible
-      - priority: high/medium/low
       - original_text: Exact wording
       - clause_number: If available
       - section_name: If available
       - page_number: If possible
-      - confidence_score: 0-100
       
       Return valid JSON only:
-      {"obligations":[{"text":"","type":"","start_date":"","due_date":"","responsible_party":"","priority":"","original_text":"","clause_number":"","section_name":"","page_number":0,"confidence_score":0}]}
+      {"obligations":[{"text":"","responsible_party":"","original_text":"","clause_number":"","section_name":"","page_number":0}]}
       No text before or after.
     `;
 
@@ -369,47 +359,26 @@ async function processChunk(chunk: string, chunkIndex: number, totalChunks: numb
     
     // Convert to InsertObligation objects
     return extractedData.obligations.map(obligation => {
-      // Normalize the type by converting to lowercase for consistency
-      const normalizedType = obligation.type ? obligation.type.toLowerCase() : 'other';
-      
+      // Set default values for the fields that were removed from the prompt
       const insertObligation: InsertObligation = {
         document_id: documentId,
         text: obligation.text, // One sentence summary of the obligation
-        type: normalizedType,
+        type: 'other', // Default value instead of asking AI
         original_text: obligation.original_text, // Exact wording from the contract
-        confidence_score: obligation.confidence_score,
-        priority: (obligation.priority || 'medium') as any,
+        confidence_score: 85, // Default confidence score
+        priority: 'medium' as any, // Default priority
         status: 'pending',
         created_by: 1, // Default user ID
         modified_by: 1 // Default user ID
       };
       
-      // Add optional fields if they exist in the response and are valid
-      if (obligation.start_date) {
-        try {
-          // Validate the date format before creating Date object
-          const startDate = new Date(obligation.start_date);
-          // Check if date is valid and not NaN
-          if (!isNaN(startDate.getTime())) {
-            insertObligation.start_date = startDate;
-          }
-        } catch (dateError) {
-          console.warn(`Invalid start_date format: ${obligation.start_date}`);
-        }
-      }
+      // Set default dates rather than asking AI
+      const today = new Date();
+      const oneMonthFromNow = new Date();
+      oneMonthFromNow.setMonth(oneMonthFromNow.getMonth() + 1);
       
-      if (obligation.due_date) {
-        try {
-          // Validate the date format before creating Date object
-          const dueDate = new Date(obligation.due_date);
-          // Check if date is valid and not NaN
-          if (!isNaN(dueDate.getTime())) {
-            insertObligation.due_date = dueDate;
-          }
-        } catch (dateError) {
-          console.warn(`Invalid due_date format: ${obligation.due_date}`);
-        }
-      }
+      insertObligation.start_date = today;
+      insertObligation.due_date = oneMonthFromNow;
       
       if (obligation.responsible_party) {
         insertObligation.responsible_party = obligation.responsible_party;
@@ -521,14 +490,9 @@ export async function analyzeSpecificObligation(text: string): Promise<{
         Analyze this text as a contractual obligation.
         Return JSON only:
         {
-          "type": "category", 
-          "start_date": "YYYY-MM-DD", 
-          "due_date": "YYYY-MM-DD", 
-          "responsible_party": "who", 
-          "priority": "high|medium|low",
+          "responsible_party": "who",
           "clause_number": "X.X.X", 
-          "section_name": "name", 
-          "confidence_score": 0-100
+          "section_name": "name"
         }
       `,
       messages: [{ role: 'user', content: text }],
@@ -542,52 +506,20 @@ export async function analyzeSpecificObligation(text: string): Promise<{
     // Use our robust JSON parsing logic for single objects
     const result = safeJsonParseSimple(contentBlock.text);
     
-    // Validate date fields
-    if (result.start_date) {
-      try {
-        const startDate = new Date(result.start_date);
-        if (isNaN(startDate.getTime())) {
-          delete result.start_date;
-        }
-      } catch (error) {
-        delete result.start_date;
-      }
-    }
+    // Set default values for removed fields
+    result.type = 'other';
     
-    if (result.due_date) {
-      try {
-        const dueDate = new Date(result.due_date);
-        if (isNaN(dueDate.getTime())) {
-          delete result.due_date;
-        }
-      } catch (error) {
-        delete result.due_date;
-      }
-    }
+    // Set default dates in string format
+    const today = new Date();
+    const oneMonthFromNow = new Date();
+    oneMonthFromNow.setMonth(oneMonthFromNow.getMonth() + 1);
     
-    // Now we can accept any type returned by the AI
-    // Just normalize to lowercase for consistency and provide a default if missing
-    if (result.type) {
-      result.type = result.type.toLowerCase();
-    } else {
-      // Default to 'other' if type is missing
-      result.type = 'other';
-    }
+    result.start_date = today.toISOString().split('T')[0]; // YYYY-MM-DD format
+    result.due_date = oneMonthFromNow.toISOString().split('T')[0]; // YYYY-MM-DD format
     
-    // Validate priority field
-    if (result.priority) {
-      const validPriorities = ['high', 'medium', 'low'];
-      const normalizedPriority = result.priority.toLowerCase();
-      
-      if (!validPriorities.includes(normalizedPriority)) {
-        result.priority = 'medium'; // Default to medium if invalid
-      } else {
-        result.priority = normalizedPriority;
-      }
-    } else {
-      // Default to 'medium' if priority is missing
-      result.priority = 'medium';
-    }
+    // Default priority and confidence
+    result.priority = 'medium';
+    result.confidence_score = 85;
     
     return result;
   } catch (error: any) {
