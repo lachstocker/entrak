@@ -4,17 +4,10 @@ import { z } from "zod";
 import { relations } from "drizzle-orm";
 
 // Enums
-// We'll use text for obligation types instead of enum to allow flexibility with AI responses
 export const obligationStatusEnum = pgEnum('obligation_status', [
   'pending',
   'completed',
   'overdue'
-]);
-
-export const obligationPriorityEnum = pgEnum('obligation_priority', [
-  'high',
-  'medium',
-  'low'
 ]);
 
 export const notificationMethodEnum = pgEnum('notification_method', [
@@ -73,13 +66,8 @@ export const obligations = pgTable("obligations", {
   id: serial("id").primaryKey(),
   document_id: integer("document_id").references(() => documents.id).notNull(),
   text: text("text").notNull(), // One sentence summary of the obligation
-  type: text("type").notNull(), // Using text instead of enum for flexibility with AI responses
-  start_date: timestamp("start_date"),
-  due_date: timestamp("due_date"),
   responsible_party: text("responsible_party"),
   status: obligationStatusEnum("status").default("pending").notNull(),
-  priority: obligationPriorityEnum("priority").default("medium").notNull(),
-  confidence_score: integer("confidence_score"),
   original_text: text("original_text"), // Exact wording from the contract
   clause_number: text("clause_number"), // Clause number from the contract
   section_name: text("section_name"), // Section name from the contract

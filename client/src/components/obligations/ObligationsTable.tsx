@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Edit, Bell, Eye, ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react';
+import { Edit, Bell, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 import { 
   Table, 
   TableHeader, 
@@ -10,17 +10,9 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu';
-import { formatDate, getTimeUntil, getInitials } from '@/lib/utils';
+import { getInitials } from '@/lib/utils';
 import { Obligation } from '@/types';
-import { OBLIGATION_TYPES } from '@/constants';
 import EditObligationDialog from './EditObligationDialog';
-import ObligationBadge from './ObligationBadge';
 
 interface ObligationsTableProps {
   obligations: Obligation[];
@@ -105,9 +97,7 @@ const ObligationsTable: React.FC<ObligationsTableProps> = ({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[100px]">Type</TableHead>
               <TableHead>Description</TableHead>
-              <TableHead className="w-[180px]">Due Date</TableHead>
               <TableHead className="w-[180px]">Responsible</TableHead>
               <TableHead className="w-[100px]">Status</TableHead>
               <TableHead className="w-[100px] text-right">Actions</TableHead>
@@ -116,22 +106,19 @@ const ObligationsTable: React.FC<ObligationsTableProps> = ({
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">
+                <TableCell colSpan={4} className="h-24 text-center">
                   Loading obligations...
                 </TableCell>
               </TableRow>
             ) : paginatedObligations.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">
+                <TableCell colSpan={4} className="h-24 text-center">
                   No obligations found
                 </TableCell>
               </TableRow>
             ) : (
               paginatedObligations.map((obligation) => (
                 <TableRow key={obligation.id} className="hover:bg-[#E6F0F5] transition-colors">
-                  <TableCell>
-                    <ObligationBadge type={obligation.type} />
-                  </TableCell>
                   <TableCell>
                     <div className="text-sm font-medium text-gray-900">{obligation.text}</div>
                     <div className="text-sm text-gray-500">
@@ -143,14 +130,6 @@ const ObligationsTable: React.FC<ObligationsTableProps> = ({
                           {obligation.section_name && `${obligation.section_name}`}
                         </span>
                       )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{formatDate(obligation.due_date)}</div>
-                    <div className={`text-sm ${
-                      obligation.status === 'overdue' ? 'text-red-500' : 'text-gray-500'
-                    }`}>
-                      {getTimeUntil(obligation.due_date)}
                     </div>
                   </TableCell>
                   <TableCell className="whitespace-nowrap">

@@ -260,25 +260,14 @@ function safeJsonParseSimple(jsonString: string): any {
     
     // Last resort: Rebuild a minimal valid JSON object with the fields we need
     try {
-      const typeMatch = cleanJson.match(/"type"\s*:\s*"([^"]*)"/);
-      const startDateMatch = cleanJson.match(/"start_date"\s*:\s*"([^"]*)"/);
-      const dueDateMatch = cleanJson.match(/"due_date"\s*:\s*"([^"]*)"/);
       const responsiblePartyMatch = cleanJson.match(/"responsible_party"\s*:\s*"([^"]*)"/);
-      const priorityMatch = cleanJson.match(/"priority"\s*:\s*"([^"]*)"/);
-      const confidenceScoreMatch = cleanJson.match(/"confidence_score"\s*:\s*(\d+)/);
       const clauseNumberMatch = cleanJson.match(/"clause_number"\s*:\s*"([^"]*)"/);
       const sectionNameMatch = cleanJson.match(/"section_name"\s*:\s*"([^"]*)"/);
       
       // Construct a valid minimal object
-      const result: any = {
-        type: typeMatch ? typeMatch[1] : 'other',
-        confidence_score: confidenceScoreMatch ? parseInt(confidenceScoreMatch[1]) : 50
-      };
+      const result: any = {};
       
-      if (startDateMatch) result.start_date = startDateMatch[1];
-      if (dueDateMatch) result.due_date = dueDateMatch[1];
       if (responsiblePartyMatch) result.responsible_party = responsiblePartyMatch[1];
-      if (priorityMatch) result.priority = priorityMatch[1];
       if (clauseNumberMatch) result.clause_number = clauseNumberMatch[1];
       if (sectionNameMatch) result.section_name = sectionNameMatch[1];
       
@@ -359,26 +348,15 @@ async function processChunk(chunk: string, chunkIndex: number, totalChunks: numb
     
     // Convert to InsertObligation objects
     return extractedData.obligations.map(obligation => {
-      // Set default values for the fields that were removed from the prompt
+      // Create the obligation with the required fields
       const insertObligation: InsertObligation = {
         document_id: documentId,
         text: obligation.text, // One sentence summary of the obligation
-        type: 'other', // Default value instead of asking AI
         original_text: obligation.original_text, // Exact wording from the contract
-        confidence_score: 85, // Default confidence score
-        priority: 'medium' as any, // Default priority
         status: 'pending',
         created_by: 1, // Default user ID
         modified_by: 1 // Default user ID
       };
-      
-      // Set default dates rather than asking AI
-      const today = new Date();
-      const oneMonthFromNow = new Date();
-      oneMonthFromNow.setMonth(oneMonthFromNow.getMonth() + 1);
-      
-      insertObligation.start_date = today;
-      insertObligation.due_date = oneMonthFromNow;
       
       if (obligation.responsible_party) {
         insertObligation.responsible_party = obligation.responsible_party;
@@ -472,14 +450,9 @@ export async function extractObligations(text: string, documentId: number): Prom
 }
 
 export async function analyzeSpecificObligation(text: string): Promise<{ 
-  type: string;
-  start_date?: string;
-  due_date?: string;
   responsible_party?: string;
-  priority?: string;
   clause_number?: string;
   section_name?: string;
-  confidence_score: number;
 }> {
   try {
     // Standard batch processing
@@ -505,21 +478,6 @@ export async function analyzeSpecificObligation(text: string): Promise<{
     
     // Use our robust JSON parsing logic for single objects
     const result = safeJsonParseSimple(contentBlock.text);
-    
-    // Set default values for removed fields
-    result.type = 'other';
-    
-    // Set default dates in string format
-    const today = new Date();
-    const oneMonthFromNow = new Date();
-    oneMonthFromNow.setMonth(oneMonthFromNow.getMonth() + 1);
-    
-    result.start_date = today.toISOString().split('T')[0]; // YYYY-MM-DD format
-    result.due_date = oneMonthFromNow.toISOString().split('T')[0]; // YYYY-MM-DD format
-    
-    // Default priority and confidence
-    result.priority = 'medium';
-    result.confidence_score = 85;
     
     return result;
   } catch (error: any) {

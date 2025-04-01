@@ -18,13 +18,8 @@ export interface Obligation {
   id: number;
   document_id: number;
   text: string;
-  type: 'payment' | 'delivery' | 'reporting' | 'compliance' | 'renewal' | 'termination' | 'other';
-  start_date?: string;
-  due_date?: string;
   responsible_party?: string;
   status: 'pending' | 'completed' | 'overdue';
-  priority: 'high' | 'medium' | 'low';
-  confidence_score?: number;
   original_text?: string;
   clause_number?: string;
   section_name?: string;
@@ -89,10 +84,7 @@ export interface FileUploadState {
 }
 
 export interface FilterState {
-  type: string;
   status: string;
-  dueDateStart?: string;
-  dueDateEnd?: string;
   responsibleParty?: string;
   documentId?: number;
 }
@@ -100,7 +92,6 @@ export interface FilterState {
 export interface CalendarEvent {
   id: number;
   title: string;
-  type: string;
   date: string;
   obligationId: number;
 }
