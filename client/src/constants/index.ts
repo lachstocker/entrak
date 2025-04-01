@@ -43,7 +43,8 @@ export const RECURRENCE_TYPES = [
   { value: 'weekly', label: 'Weekly' },
   { value: 'monthly', label: 'Monthly' },
   { value: 'yearly', label: 'Yearly' },
-  { value: 'custom', label: 'Custom' }
+  { value: 'custom', label: 'Custom' },
+  { value: 'ongoing', label: 'Ongoing' }
 ];
 
 export const MONTHS = [

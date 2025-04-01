@@ -28,7 +28,8 @@ export const recurrenceTypeEnum = pgEnum('recurrence_type', [
   'weekly',
   'monthly',
   'yearly',
-  'custom'
+  'custom',
+  'ongoing'
 ]);
 
 // Users table

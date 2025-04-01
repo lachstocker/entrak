@@ -363,7 +363,7 @@ async function processChunk(chunk: string, chunkIndex: number, totalChunks: numb
       
       Also analyze if the obligation recurs (weekly, monthly, yearly, etc):
       - is_recurring: true/false (whether the obligation has recurring requirements)
-      - recurrence_type: one of [none, daily, weekly, monthly, yearly, custom]
+      - recurrence_type: one of [none, daily, weekly, monthly, yearly, custom, ongoing]
       - recurrence_interval: number (e.g., every 2 weeks = 2, every 3 months = 3)
       - recurrence_day: day number if applicable (1-31 for day of month or 0-6 for day of week Sun-Sat)
       - recurrence_month: month number if applicable (1-12)
@@ -397,6 +397,21 @@ async function processChunk(chunk: string, chunkIndex: number, totalChunks: numb
     // Convert to InsertObligation objects
     return extractedData.obligations.map(obligation => {
       // Create the obligation with the required fields
+      // Normalize recurrence_type to ensure it's a valid enum value
+      let recurrenceType = 'none';
+      if (obligation.recurrence_type) {
+        // Convert to lowercase to handle case differences
+        const type = obligation.recurrence_type.toLowerCase();
+        // Check if it's a valid recurrence type from our enum
+        if (['none', 'daily', 'weekly', 'monthly', 'yearly', 'custom', 'ongoing'].includes(type)) {
+          recurrenceType = type;
+        } else {
+          // For anything else, default to 'custom' and store the original value in custom_text
+          recurrenceType = 'custom';
+          obligation.recurrence_custom_text = `Original type: ${obligation.recurrence_type}`;
+        }
+      }
+      
       const insertObligation: InsertObligation = {
         document_id: documentId,
         text: obligation.text, // One sentence summary of the obligation
@@ -406,7 +421,7 @@ async function processChunk(chunk: string, chunkIndex: number, totalChunks: numb
         modified_by: 1, // Default user ID
         // Default recurrence to false if not specified
         is_recurring: obligation.is_recurring ?? false,
-        recurrence_type: (obligation.recurrence_type as any) ?? 'none'
+        recurrence_type: recurrenceType as any
       };
       
       if (obligation.responsible_party) {
@@ -522,7 +537,7 @@ export async function analyzeSpecificObligation(text: string): Promise<{
   clause_number?: string;
   section_name?: string;
   is_recurring?: boolean;
-  recurrence_type?: 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom';
+  recurrence_type?: 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom' | 'ongoing';
   recurrence_interval?: number;
   recurrence_day?: number;
   recurrence_month?: number;
@@ -542,7 +557,7 @@ export async function analyzeSpecificObligation(text: string): Promise<{
           "clause_number": "X.X.X", 
           "section_name": "name",
           "is_recurring": true/false,
-          "recurrence_type": "none"/"daily"/"weekly"/"monthly"/"yearly"/"custom",
+          "recurrence_type": "none"/"daily"/"weekly"/"monthly"/"yearly"/"custom"/"ongoing",
           "recurrence_interval": number (e.g., every 2 weeks = 2),
           "recurrence_day": number (day of month/week),
           "recurrence_month": number (month of year 1-12),
