@@ -24,6 +24,12 @@ export async function apiRequest({
   });
 
   await throwIfResNotOk(res);
+  
+  // If the response is 204 No Content, return an empty object instead of trying to parse JSON
+  if (res.status === 204) {
+    return {};
+  }
+  
   return res.json();
 }
 
@@ -42,6 +48,12 @@ export const getQueryFn: <T>(options: {
     }
 
     await throwIfResNotOk(res);
+    
+    // If the response is 204 No Content, return an empty object instead of trying to parse JSON
+    if (res.status === 204) {
+      return {};
+    }
+    
     return await res.json();
   };
 
