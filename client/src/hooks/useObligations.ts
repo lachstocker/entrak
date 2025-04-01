@@ -28,7 +28,7 @@ export function useObligations(filters: FilterState) {
     queryParams.append('documentId', filters.documentId.toString());
   }
   
-  if (filters.projectId && filters.projectId !== undefined) {
+  if (filters.projectId !== undefined) {
     queryParams.append('projectId', filters.projectId.toString());
   }
 

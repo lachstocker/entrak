@@ -1,5 +1,5 @@
-import React from 'react';
-import { Download, X } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Download, X, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -32,24 +32,70 @@ const FilterBar: React.FC<FilterBarProps> = ({
   obligations 
 }) => {
   const { projects, isLoading: isLoadingProjects } = useProjects();
+  
+  // Maintain internal state for filters
+  const [internalFilters, setInternalFilters] = useState<FilterState>({
+    status: initialFilters.status || 'all',
+    responsibleParty: initialFilters.responsibleParty || 'all',
+    isRecurring: initialFilters.isRecurring,
+    projectId: initialFilters.projectId
+  });
+  
+  // Sync internal state when initialFilters changes
+  useEffect(() => {
+    setInternalFilters({
+      status: initialFilters.status || 'all',
+      responsibleParty: initialFilters.responsibleParty || 'all',
+      isRecurring: initialFilters.isRecurring,
+      projectId: initialFilters.projectId
+    });
+  }, [initialFilters]);
 
   // Handle filter changes while preserving other active filters
   const handleStatusFilterChange = (value: string) => {
-    onFilterChange({ ...initialFilters, status: value });
+    const newFilters = { 
+      ...internalFilters, 
+      status: value 
+    };
+    setInternalFilters(newFilters);
+    onFilterChange(newFilters);
   };
 
   const handleResponsibleChange = (value: string) => {
-    onFilterChange({ ...initialFilters, responsibleParty: value });
+    const newFilters = { 
+      ...internalFilters, 
+      responsibleParty: value 
+    };
+    setInternalFilters(newFilters);
+    onFilterChange(newFilters);
   };
 
   const handleRecurringChange = (value: string) => {
-    const isRecurring = value === 'true' ? true : value === 'false' ? false : undefined;
-    onFilterChange({ ...initialFilters, isRecurring });
+    const isRecurring = value === 'true' 
+      ? true 
+      : value === 'false' 
+        ? false 
+        : undefined;
+        
+    const newFilters = { 
+      ...internalFilters, 
+      isRecurring 
+    };
+    setInternalFilters(newFilters);
+    onFilterChange(newFilters);
   };
 
   const handleProjectChange = (value: string) => {
-    const projectId = value === 'all' ? undefined : parseInt(value, 10);
-    onFilterChange({ ...initialFilters, projectId });
+    const projectId = value === 'all' 
+      ? undefined 
+      : parseInt(value, 10);
+      
+    const newFilters = { 
+      ...internalFilters, 
+      projectId 
+    };
+    setInternalFilters(newFilters);
+    onFilterChange(newFilters);
   };
 
   const handleExport = (format: 'csv' | 'json' | 'pdf') => {
@@ -58,48 +104,50 @@ const FilterBar: React.FC<FilterBarProps> = ({
   
   // Clear all active filters
   const handleClearFilters = () => {
-    onFilterChange({ 
+    const defaultFilters = { 
       status: 'all', 
       responsibleParty: 'all',
       isRecurring: undefined,
       projectId: undefined 
-    });
+    };
+    setInternalFilters(defaultFilters);
+    onFilterChange(defaultFilters);
   };
 
   // Check if a filter is active (not set to default/all value)
   const isFilterActive = (filterName: string): boolean => {
     switch(filterName) {
       case 'status':
-        return initialFilters?.status !== undefined && initialFilters.status !== 'all';
+        return internalFilters.status !== undefined && internalFilters.status !== 'all';
       case 'responsibleParty':
-        return initialFilters?.responsibleParty !== undefined && initialFilters.responsibleParty !== 'all';
+        return internalFilters.responsibleParty !== undefined && internalFilters.responsibleParty !== 'all';
       case 'isRecurring':
-        return initialFilters?.isRecurring !== undefined;
+        return internalFilters.isRecurring !== undefined;
       case 'projectId':
-        return initialFilters?.projectId !== undefined;
+        return internalFilters.projectId !== undefined;
       default:
         return false;
     }
   };
   
   // Check if any filter is active
-  const hasActiveFilters = () => {
+  const hasActiveFilters = (): boolean => {
     return isFilterActive('status') || 
            isFilterActive('responsibleParty') || 
            isFilterActive('isRecurring') || 
            isFilterActive('projectId');
   };
   
-  // Determine initial values for the Select components
-  const statusValue = initialFilters?.status || 'all';
-  const responsibleValue = initialFilters?.responsibleParty || 'all';
-  const recurringValue = initialFilters?.isRecurring === true 
+  // Calculate values for the Select components
+  const statusValue = internalFilters.status || 'all';
+  const responsibleValue = internalFilters.responsibleParty || 'all';
+  const recurringValue = internalFilters.isRecurring === true 
     ? 'true' 
-    : initialFilters?.isRecurring === false 
+    : internalFilters.isRecurring === false 
       ? 'false' 
       : 'all';
-  const projectValue = initialFilters?.projectId 
-    ? initialFilters.projectId.toString() 
+  const projectValue = internalFilters.projectId 
+    ? internalFilters.projectId.toString() 
     : 'all';
 
   return (
@@ -111,7 +159,10 @@ const FilterBar: React.FC<FilterBarProps> = ({
             : 'bg-[#E6F0F5] text-[#0F2B46]'
           }`}
         >
-          <SelectValue placeholder="All Status" />
+          <div className="flex justify-between items-center w-full">
+            <SelectValue placeholder="All Status" />
+            {isFilterActive('status') && <Check className="h-4 w-4 ml-1 text-[#2D88D3]" />}
+          </div>
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">All Status</SelectItem>
@@ -128,7 +179,10 @@ const FilterBar: React.FC<FilterBarProps> = ({
             : 'bg-[#E6F0F5] text-[#0F2B46]'
           }`}
         >
-          <SelectValue placeholder="Responsible Party" />
+          <div className="flex justify-between items-center w-full">
+            <SelectValue placeholder="Responsible Party" />
+            {isFilterActive('responsibleParty') && <Check className="h-4 w-4 ml-1 text-[#2D88D3]" />}
+          </div>
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">All Responsible Parties</SelectItem>
@@ -145,7 +199,10 @@ const FilterBar: React.FC<FilterBarProps> = ({
             : 'bg-[#E6F0F5] text-[#0F2B46]'
           }`}
         >
-          <SelectValue placeholder="Recurrence" />
+          <div className="flex justify-between items-center w-full">
+            <SelectValue placeholder="Recurrence" />
+            {isFilterActive('isRecurring') && <Check className="h-4 w-4 ml-1 text-[#2D88D3]" />}
+          </div>
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">All Obligations</SelectItem>
@@ -161,7 +218,10 @@ const FilterBar: React.FC<FilterBarProps> = ({
             : 'bg-[#E6F0F5] text-[#0F2B46]'
           }`}
         >
-          <SelectValue placeholder="Project" />
+          <div className="flex justify-between items-center w-full">
+            <SelectValue placeholder="Project" />
+            {isFilterActive('projectId') && <Check className="h-4 w-4 ml-1 text-[#2D88D3]" />}
+          </div>
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">All Projects</SelectItem>

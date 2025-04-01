@@ -66,6 +66,7 @@ const Dashboard: React.FC = () => {
               <FilterBar 
                 onFilterChange={handleFilterChange}
                 onExport={handleExport}
+                initialFilters={filters}
                 obligations={obligations || []}
               />
             </div>
