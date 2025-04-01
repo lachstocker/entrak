@@ -165,6 +165,7 @@ const Obligations: React.FC = () => {
               onEditObligation={handleEditObligation}
               onSetReminder={handleSetReminder}
               onViewDetails={handleViewDetails}
+              initialItemsPerPage={10}
             />
           </div>
         </div>

@@ -10,6 +10,13 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { getInitials } from '@/lib/utils';
 import { Obligation } from '@/types';
 import EditObligationDialog from './EditObligationDialog';
@@ -21,6 +28,7 @@ interface ObligationsTableProps {
   onEditObligation?: (obligation: Obligation) => void;
   onViewDetails?: (obligation: Obligation) => void;
   onSetReminder?: (obligation: Obligation) => void;
+  initialItemsPerPage?: number;
 }
 
 const ObligationsTable: React.FC<ObligationsTableProps> = ({ 
@@ -28,13 +36,14 @@ const ObligationsTable: React.FC<ObligationsTableProps> = ({
   isLoading = false,
   onEditObligation,
   onViewDetails,
-  onSetReminder
+  onSetReminder,
+  initialItemsPerPage = 5
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedObligation, setSelectedObligation] = useState<Obligation | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [itemsPerPage, setItemsPerPage] = useState(initialItemsPerPage);
   
-  const itemsPerPage = 5;
   const totalPages = Math.ceil(obligations.length / itemsPerPage);
   
   const paginatedObligations = obligations.slice(
@@ -257,12 +266,30 @@ const ObligationsTable: React.FC<ObligationsTableProps> = ({
         </Table>
       </div>
       
-      {totalPages > 1 && (
-        <div className="mt-6 flex items-center justify-between">
+      <div className="mt-6 flex items-center justify-between">
+        <div className="flex items-center gap-3">
           <div className="text-sm text-gray-500">
             Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, obligations.length)} of {obligations.length} obligations
           </div>
           
+          <Select value={itemsPerPage.toString()} onValueChange={(value) => {
+            setItemsPerPage(parseInt(value, 10));
+            setCurrentPage(1); // Reset to first page when changing items per page
+          }}>
+            <SelectTrigger className="w-[130px] bg-[#E6F0F5] text-[#0F2B46]">
+              <SelectValue placeholder="Items per page" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="5">5 per page</SelectItem>
+              <SelectItem value="10">10 per page</SelectItem>
+              <SelectItem value="25">25 per page</SelectItem>
+              <SelectItem value="50">50 per page</SelectItem>
+              <SelectItem value="100">100 per page</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        
+        {totalPages > 1 && (
           <div className="flex items-center space-x-2">
             <Button
               variant="outline"
@@ -309,8 +336,8 @@ const ObligationsTable: React.FC<ObligationsTableProps> = ({
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
-        </div>
-      )}
+        )}
+      </div>
       
       {selectedObligation && (
         <EditObligationDialog

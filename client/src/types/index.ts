@@ -91,9 +91,13 @@ export interface FileUploadState {
 
 export interface FilterState {
   status: string;
+  type?: string;
   responsibleParty?: string;
   documentId?: number;
+  projectId?: number;
   isRecurring?: boolean;
+  dueDateStart?: string;
+  dueDateEnd?: string;
 }
 
 export interface CalendarEvent {

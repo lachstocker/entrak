@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/select';
 import { FilterState } from '@/types';
 import { OBLIGATION_STATUSES, RESPONSIBLE_PARTIES } from '@/constants';
+import { useProjects } from '@/hooks/useProjects';
 
 interface FilterBarProps {
   onFilterChange: (filters: FilterState) => void;
@@ -31,6 +32,7 @@ const FilterBar: React.FC<FilterBarProps> = ({
   obligations 
 }) => {
   const [filters, setFilters] = useState<FilterState>(initialFilters);
+  const { projects, isLoading: isLoadingProjects } = useProjects();
 
   const handleStatusFilterChange = (value: string) => {
     const newFilters = { ...filters, status: value };
@@ -45,7 +47,14 @@ const FilterBar: React.FC<FilterBarProps> = ({
   };
 
   const handleRecurringChange = (value: string) => {
-    const newFilters = { ...filters, isRecurring: value === 'true' };
+    const newFilters = { ...filters, isRecurring: value === 'true' ? true : value === 'false' ? false : undefined };
+    setFilters(newFilters);
+    onFilterChange(newFilters);
+  };
+
+  const handleProjectChange = (value: string) => {
+    const projectId = value === 'all' ? undefined : parseInt(value, 10);
+    const newFilters = { ...filters, projectId };
     setFilters(newFilters);
     onFilterChange(newFilters);
   };
@@ -88,6 +97,18 @@ const FilterBar: React.FC<FilterBarProps> = ({
           <SelectItem value="all">All Obligations</SelectItem>
           <SelectItem value="true">Recurring Only</SelectItem>
           <SelectItem value="false">Non-recurring Only</SelectItem>
+        </SelectContent>
+      </Select>
+
+      <Select onValueChange={handleProjectChange} defaultValue="all">
+        <SelectTrigger className="bg-[#E6F0F5] text-[#0F2B46] w-[180px]">
+          <SelectValue placeholder="Project" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All Projects</SelectItem>
+          {!isLoadingProjects && projects.map(project => (
+            <SelectItem key={project.id} value={project.id.toString()}>{project.name}</SelectItem>
+          ))}
         </SelectContent>
       </Select>
 

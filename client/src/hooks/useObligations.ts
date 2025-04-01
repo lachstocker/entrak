@@ -27,6 +27,10 @@ export function useObligations(filters: FilterState) {
   if (filters.documentId) {
     queryParams.append('documentId', filters.documentId.toString());
   }
+  
+  if (filters.projectId) {
+    queryParams.append('projectId', filters.projectId.toString());
+  }
 
   if (filters.isRecurring !== undefined) {
     queryParams.append('isRecurring', filters.isRecurring.toString());
