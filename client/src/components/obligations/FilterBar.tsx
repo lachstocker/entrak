@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -31,41 +31,45 @@ const FilterBar: React.FC<FilterBarProps> = ({
   initialFilters = { status: 'all', responsibleParty: 'all' },
   obligations 
 }) => {
-  const [filters, setFilters] = useState<FilterState>(initialFilters);
   const { projects, isLoading: isLoadingProjects } = useProjects();
 
   const handleStatusFilterChange = (value: string) => {
-    const newFilters = { ...filters, status: value };
-    setFilters(newFilters);
-    onFilterChange(newFilters);
+    onFilterChange({ ...initialFilters, status: value });
   };
 
   const handleResponsibleChange = (value: string) => {
-    const newFilters = { ...filters, responsibleParty: value };
-    setFilters(newFilters);
-    onFilterChange(newFilters);
+    onFilterChange({ ...initialFilters, responsibleParty: value });
   };
 
   const handleRecurringChange = (value: string) => {
-    const newFilters = { ...filters, isRecurring: value === 'true' ? true : value === 'false' ? false : undefined };
-    setFilters(newFilters);
-    onFilterChange(newFilters);
+    const isRecurring = value === 'true' ? true : value === 'false' ? false : undefined;
+    onFilterChange({ ...initialFilters, isRecurring });
   };
 
   const handleProjectChange = (value: string) => {
     const projectId = value === 'all' ? undefined : parseInt(value, 10);
-    const newFilters = { ...filters, projectId };
-    setFilters(newFilters);
-    onFilterChange(newFilters);
+    onFilterChange({ ...initialFilters, projectId });
   };
 
   const handleExport = (format: 'csv' | 'json' | 'pdf') => {
     onExport(format);
   };
+  
+  // Determine initial values for the Select components
+  const statusValue = initialFilters?.status || 'all';
+  const responsibleValue = initialFilters?.responsibleParty || 'all';
+  const recurringValue = initialFilters?.isRecurring === true 
+    ? 'true' 
+    : initialFilters?.isRecurring === false 
+      ? 'false' 
+      : 'all';
+  const projectValue = initialFilters?.projectId 
+    ? initialFilters.projectId.toString() 
+    : 'all';
 
   return (
     <div className="flex flex-wrap items-center mt-4 md:mt-0 gap-3">
-      <Select onValueChange={handleStatusFilterChange} defaultValue={filters.status}>
+      <Select onValueChange={handleStatusFilterChange} value={statusValue}>
         <SelectTrigger className="bg-[#E6F0F5] text-[#0F2B46] w-[140px]">
           <SelectValue placeholder="All Status" />
         </SelectTrigger>
@@ -77,7 +81,7 @@ const FilterBar: React.FC<FilterBarProps> = ({
         </SelectContent>
       </Select>
 
-      <Select onValueChange={handleResponsibleChange} defaultValue={filters.responsibleParty || 'all'}>
+      <Select onValueChange={handleResponsibleChange} value={responsibleValue}>
         <SelectTrigger className="bg-[#E6F0F5] text-[#0F2B46] w-[180px]">
           <SelectValue placeholder="Responsible Party" />
         </SelectTrigger>
@@ -89,7 +93,7 @@ const FilterBar: React.FC<FilterBarProps> = ({
         </SelectContent>
       </Select>
 
-      <Select onValueChange={handleRecurringChange} defaultValue="all">
+      <Select onValueChange={handleRecurringChange} value={recurringValue}>
         <SelectTrigger className="bg-[#E6F0F5] text-[#0F2B46] w-[160px]">
           <SelectValue placeholder="Recurrence" />
         </SelectTrigger>
@@ -100,13 +104,13 @@ const FilterBar: React.FC<FilterBarProps> = ({
         </SelectContent>
       </Select>
 
-      <Select onValueChange={handleProjectChange} defaultValue="all">
+      <Select onValueChange={handleProjectChange} value={projectValue}>
         <SelectTrigger className="bg-[#E6F0F5] text-[#0F2B46] w-[180px]">
           <SelectValue placeholder="Project" />
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">All Projects</SelectItem>
-          {!isLoadingProjects && projects.map(project => (
+          {!isLoadingProjects && projects?.map(project => (
             <SelectItem key={project.id} value={project.id.toString()}>{project.name}</SelectItem>
           ))}
         </SelectContent>

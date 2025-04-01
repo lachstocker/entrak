@@ -20,7 +20,7 @@ export function useObligations(filters: FilterState) {
     queryParams.append('dueDateEnd', filters.dueDateEnd);
   }
   
-  if (filters.responsibleParty) {
+  if (filters.responsibleParty && filters.responsibleParty !== 'all') {
     queryParams.append('responsibleParty', filters.responsibleParty);
   }
   
@@ -28,11 +28,11 @@ export function useObligations(filters: FilterState) {
     queryParams.append('documentId', filters.documentId.toString());
   }
   
-  if (filters.projectId) {
+  if (filters.projectId && filters.projectId !== undefined) {
     queryParams.append('projectId', filters.projectId.toString());
   }
 
-  if (filters.isRecurring !== undefined) {
+  if (filters.isRecurring !== undefined && filters.isRecurring !== null) {
     queryParams.append('isRecurring', filters.isRecurring.toString());
   }
   
