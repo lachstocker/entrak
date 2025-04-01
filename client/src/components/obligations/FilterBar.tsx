@@ -1,5 +1,5 @@
 import React from 'react';
-import { Download } from 'lucide-react';
+import { Download, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -33,6 +33,7 @@ const FilterBar: React.FC<FilterBarProps> = ({
 }) => {
   const { projects, isLoading: isLoadingProjects } = useProjects();
 
+  // Handle filter changes while preserving other active filters
   const handleStatusFilterChange = (value: string) => {
     onFilterChange({ ...initialFilters, status: value });
   };
@@ -55,6 +56,40 @@ const FilterBar: React.FC<FilterBarProps> = ({
     onExport(format);
   };
   
+  // Clear all active filters
+  const handleClearFilters = () => {
+    onFilterChange({ 
+      status: 'all', 
+      responsibleParty: 'all',
+      isRecurring: undefined,
+      projectId: undefined 
+    });
+  };
+
+  // Check if a filter is active (not set to default/all value)
+  const isFilterActive = (filterName: string): boolean => {
+    switch(filterName) {
+      case 'status':
+        return initialFilters?.status !== undefined && initialFilters.status !== 'all';
+      case 'responsibleParty':
+        return initialFilters?.responsibleParty !== undefined && initialFilters.responsibleParty !== 'all';
+      case 'isRecurring':
+        return initialFilters?.isRecurring !== undefined;
+      case 'projectId':
+        return initialFilters?.projectId !== undefined;
+      default:
+        return false;
+    }
+  };
+  
+  // Check if any filter is active
+  const hasActiveFilters = () => {
+    return isFilterActive('status') || 
+           isFilterActive('responsibleParty') || 
+           isFilterActive('isRecurring') || 
+           isFilterActive('projectId');
+  };
+  
   // Determine initial values for the Select components
   const statusValue = initialFilters?.status || 'all';
   const responsibleValue = initialFilters?.responsibleParty || 'all';
@@ -70,7 +105,12 @@ const FilterBar: React.FC<FilterBarProps> = ({
   return (
     <div className="flex flex-wrap items-center mt-4 md:mt-0 gap-3">
       <Select onValueChange={handleStatusFilterChange} value={statusValue}>
-        <SelectTrigger className="bg-[#E6F0F5] text-[#0F2B46] w-[140px]">
+        <SelectTrigger 
+          className={`w-[140px] ${isFilterActive('status') 
+            ? 'bg-[#D0E7F5] text-[#0F2B46] border-[#2D88D3] border-2 font-medium' 
+            : 'bg-[#E6F0F5] text-[#0F2B46]'
+          }`}
+        >
           <SelectValue placeholder="All Status" />
         </SelectTrigger>
         <SelectContent>
@@ -82,7 +122,12 @@ const FilterBar: React.FC<FilterBarProps> = ({
       </Select>
 
       <Select onValueChange={handleResponsibleChange} value={responsibleValue}>
-        <SelectTrigger className="bg-[#E6F0F5] text-[#0F2B46] w-[180px]">
+        <SelectTrigger 
+          className={`w-[180px] ${isFilterActive('responsibleParty') 
+            ? 'bg-[#D0E7F5] text-[#0F2B46] border-[#2D88D3] border-2 font-medium' 
+            : 'bg-[#E6F0F5] text-[#0F2B46]'
+          }`}
+        >
           <SelectValue placeholder="Responsible Party" />
         </SelectTrigger>
         <SelectContent>
@@ -94,7 +139,12 @@ const FilterBar: React.FC<FilterBarProps> = ({
       </Select>
 
       <Select onValueChange={handleRecurringChange} value={recurringValue}>
-        <SelectTrigger className="bg-[#E6F0F5] text-[#0F2B46] w-[160px]">
+        <SelectTrigger 
+          className={`w-[160px] ${isFilterActive('isRecurring') 
+            ? 'bg-[#D0E7F5] text-[#0F2B46] border-[#2D88D3] border-2 font-medium' 
+            : 'bg-[#E6F0F5] text-[#0F2B46]'
+          }`}
+        >
           <SelectValue placeholder="Recurrence" />
         </SelectTrigger>
         <SelectContent>
@@ -105,7 +155,12 @@ const FilterBar: React.FC<FilterBarProps> = ({
       </Select>
 
       <Select onValueChange={handleProjectChange} value={projectValue}>
-        <SelectTrigger className="bg-[#E6F0F5] text-[#0F2B46] w-[180px]">
+        <SelectTrigger 
+          className={`w-[180px] ${isFilterActive('projectId') 
+            ? 'bg-[#D0E7F5] text-[#0F2B46] border-[#2D88D3] border-2 font-medium' 
+            : 'bg-[#E6F0F5] text-[#0F2B46]'
+          }`}
+        >
           <SelectValue placeholder="Project" />
         </SelectTrigger>
         <SelectContent>
@@ -115,6 +170,17 @@ const FilterBar: React.FC<FilterBarProps> = ({
           ))}
         </SelectContent>
       </Select>
+
+      {hasActiveFilters() && (
+        <Button 
+          variant="outline" 
+          onClick={handleClearFilters}
+          className="bg-[#F5E6E6] text-[#D32D2D] border-[#D32D2D] border-2 hover:bg-[#F5D0D0]"
+        >
+          <X className="mr-2 h-4 w-4" />
+          Clear Filters
+        </Button>
+      )}
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
