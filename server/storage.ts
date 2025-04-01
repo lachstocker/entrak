@@ -305,10 +305,6 @@ export class DatabaseStorage implements IStorage {
       if (filters.responsibleParty !== undefined && filters.responsibleParty !== '') {
         conditions.push(eq(obligations.responsible_party, filters.responsibleParty));
       }
-
-      if (filters.isRecurring !== undefined) {
-        conditions.push(eq(obligations.is_recurring, filters.isRecurring));
-      }
       
       if (conditions.length > 0) {
         if (conditions.length === 1) {
