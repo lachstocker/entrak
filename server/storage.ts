@@ -265,6 +265,11 @@ export class DatabaseStorage implements IStorage {
 
   // Obligation methods
   async getObligation(id: number): Promise<Obligation | undefined> {
+    // Validate id is a valid number before querying the database
+    if (isNaN(id) || id <= 0) {
+      throw new Error(`Invalid obligation ID: ${id}`);
+    }
+    
     const [obligation] = await db.select().from(obligations).where(eq(obligations.id, id));
     return obligation;
   }

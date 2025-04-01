@@ -510,6 +510,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/obligations/:id', async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
+      
+      // Validate ID is a valid number
+      if (isNaN(id) || id <= 0) {
+        return res.status(400).json({ message: `Invalid obligation ID: ${req.params.id}` });
+      }
+      
       const obligation = await storage.getObligation(id);
       
       if (!obligation) {
@@ -529,6 +535,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/obligations/:id', async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
+      
+      // Validate ID is a valid number
+      if (isNaN(id) || id <= 0) {
+        return res.status(400).json({ message: `Invalid obligation ID: ${req.params.id}` });
+      }
       
       // Validate request body
       const validationResult = insertObligationSchema.partial().safeParse(req.body);
@@ -564,6 +575,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/obligations/:id', async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
+      
+      // Validate ID is a valid number
+      if (isNaN(id) || id <= 0) {
+        return res.status(400).json({ message: `Invalid obligation ID: ${req.params.id}` });
+      }
       
       // Check if obligation exists
       const obligation = await storage.getObligation(id);
@@ -627,14 +643,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await db
         .selectDistinct({ responsibleParty: obligations.responsible_party })
         .from(obligations)
-        .where(sql`${obligations.responsible_party} IS NOT NULL`)
+        .where(sql`${obligations.responsible_party} IS NOT NULL AND ${obligations.responsible_party} != ''`)
         .orderBy(obligations.responsible_party);
       
-      // Extract just the string values
+      // Extract just the string values and ensure they're valid
       const responsibleParties = result
         .map(item => item.responsibleParty)
-        .filter(Boolean); // Remove any null/undefined values
+        .filter(party => party && typeof party === 'string' && party.trim() !== ''); 
       
+      console.log('Fetched responsible parties:', responsibleParties);
       res.json(responsibleParties);
     } catch (error) {
       console.error('Error fetching responsible parties:', error);
