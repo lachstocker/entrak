@@ -154,7 +154,7 @@ const EditObligationDialog: React.FC<EditObligationDialogProps> = ({
                 rows={3}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Original text from document"
+                placeholder="All contractual clause wording for the obligation"
                 className="w-full border border-gray-300 rounded-md px-4 py-2 focus:border-[#26E07F] focus:ring focus:ring-[#26E07F] focus:ring-opacity-50"
               />
             </div>

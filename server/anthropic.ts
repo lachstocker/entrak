@@ -11,7 +11,7 @@ interface ExtractedObligationsResponse {
   obligations: {
     text: string; // One sentence summary of the obligation
     responsible_party?: string;
-    original_text: string; // Exact wording from the contract
+    original_text: string; // All contractual clause wording for the obligation
     clause_number?: string; // Clause number from the contract
     section_name?: string; // Section name from the contract
     page_number?: number;
@@ -316,7 +316,7 @@ async function processChunk(chunk: string, chunkIndex: number, totalChunks: numb
       For each obligation, provide:
       - text: One-sentence summary 
       - responsible_party: Who is responsible
-      - original_text: Exact wording
+      - original_text: All contractual clause wording for the obligation
       - clause_number: If available
       - section_name: If available
       - page_number: If possible
@@ -352,7 +352,7 @@ async function processChunk(chunk: string, chunkIndex: number, totalChunks: numb
       const insertObligation: InsertObligation = {
         document_id: documentId,
         text: obligation.text, // One sentence summary of the obligation
-        original_text: obligation.original_text, // Exact wording from the contract
+        original_text: obligation.original_text, // All contractual clause wording for the obligation
         status: 'pending',
         created_by: 1, // Default user ID
         modified_by: 1 // Default user ID
