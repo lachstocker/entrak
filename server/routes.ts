@@ -23,7 +23,8 @@ import {
 } from "./anthropic";
 import { 
   processFile, 
-  getFileType 
+  getFileType,
+  convertToHtml
 } from "./fileProcessors";
 
 // File upload configuration
@@ -363,6 +364,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('Error uploading new version:', error);
       res.status(500).json({ 
         message: 'Failed to upload new version',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+  
+  // Generate and retrieve HTML content for a document
+  app.get('/api/documents/:id/html', async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: 'Invalid document ID' });
+      }
+      
+      const document = await storage.getDocument(id);
+      if (!document) {
+        return res.status(404).json({ message: 'Document not found' });
+      }
+      
+      // If HTML content is already cached, return it
+      if (document.html_content) {
+        return res.json({ html_content: document.html_content });
+      }
+      
+      const filePath = document.file_path;
+      
+      // Check if file exists
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ message: 'Document file not found on server' });
+      }
+      
+      try {
+        // Generate HTML content based on file type
+        const fileType = document.file_type;
+        const htmlContent = await convertToHtml(filePath, fileType);
+        
+        // Update document with HTML content
+        const updatedDocument = await storage.updateDocument(id, {
+          html_content: htmlContent,
+          html_generated_date: new Date()
+        });
+        
+        res.json({ html_content: htmlContent });
+      } catch (error) {
+        console.error('Error generating HTML:', error);
+        res.status(500).json({ 
+          message: 'Failed to generate HTML content',
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
+    } catch (error) {
+      console.error('Error retrieving HTML content:', error);
+      res.status(500).json({ 
+        message: 'Failed to retrieve HTML content',
         error: error instanceof Error ? error.message : 'Unknown error'
       });
     }

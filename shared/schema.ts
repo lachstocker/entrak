@@ -68,6 +68,8 @@ export const documents = pgTable("documents", {
   project_id: integer("project_id").references(() => projects.id),
   extracted: boolean("extracted").default(false).notNull(),
   extraction_date: timestamp("extraction_date"),
+  html_content: text("html_content"),
+  html_generated_date: timestamp("html_generated_date"),
   status: text("status").default('not_processed').notNull()
 });
 
@@ -175,7 +177,9 @@ export const insertDocumentSchema = createInsertSchema(documents).omit({
   upload_date: true,
   last_modified: true,
   extracted: true,
-  extraction_date: true
+  extraction_date: true,
+  html_content: true,
+  html_generated_date: true
 });
 
 export const insertObligationSchema = createInsertSchema(obligations).omit({

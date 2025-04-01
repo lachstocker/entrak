@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TrashIcon, DownloadIcon, FileText, Clock, UploadCloud } from 'lucide-react';
+import { TrashIcon, DownloadIcon, FileText, Clock, UploadCloud, Eye } from 'lucide-react';
 import TopNavbar from '@/components/layout/TopNavbar';
 import { Button } from '@/components/ui/button';
 import { 
@@ -33,6 +33,7 @@ import {
   SelectValue
 } from '@/components/ui/select';
 import { useLocation } from 'wouter';
+import { DocumentViewerModal } from '@/components/documents/DocumentViewerModal';
 
 const Documents: React.FC = () => {
   const [selectedProjectId, setSelectedProjectId] = useState<number | undefined>(undefined);
@@ -42,6 +43,8 @@ const Documents: React.FC = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoadingProjects, setIsLoadingProjects] = useState(true);
+  const [viewDocumentId, setViewDocumentId] = useState<number | null>(null);
+  const [viewDocumentTitle, setViewDocumentTitle] = useState<string>('');
   const { toast } = useToast();
   const [location, navigate] = useLocation();
   
@@ -160,6 +163,11 @@ const Documents: React.FC = () => {
     }
   };
   
+  const handleViewDocument = (document: Document) => {
+    setViewDocumentId(document.id);
+    setViewDocumentTitle(document.title);
+  };
+  
   return (
     <main className="flex-1 flex flex-col overflow-hidden">
       <TopNavbar title="Documents" />
@@ -276,6 +284,15 @@ const Documents: React.FC = () => {
                           <Button 
                             variant="ghost" 
                             size="icon"
+                            onClick={() => handleViewDocument(document)}
+                            title="View"
+                          >
+                            <Eye size={18} />
+                          </Button>
+
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
                             onClick={() => handleDownload(document)}
                             title="Download"
                           >
@@ -359,6 +376,14 @@ const Documents: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      {/* Document Viewer Modal */}
+      <DocumentViewerModal
+        documentId={viewDocumentId}
+        documentTitle={viewDocumentTitle}
+        isOpen={viewDocumentId !== null}
+        onClose={() => setViewDocumentId(null)}
+      />
     </main>
   );
 };
