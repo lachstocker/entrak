@@ -93,6 +93,7 @@ export interface FilterState {
   status: string;
   responsibleParty?: string;
   documentId?: number;
+  isRecurring?: boolean;
 }
 
 export interface CalendarEvent {

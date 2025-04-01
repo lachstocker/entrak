@@ -274,6 +274,7 @@ export class DatabaseStorage implements IStorage {
     projectId?: number;
     status?: string;
     responsibleParty?: string;
+    isRecurring?: boolean;
   }): Promise<Obligation[]> {
     let query = db.select().from(obligations);
     
