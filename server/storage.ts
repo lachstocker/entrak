@@ -275,10 +275,7 @@ export class DatabaseStorage implements IStorage {
   async getObligations(filters?: {
     documentId?: number;
     projectId?: number;
-    type?: string;
     status?: string;
-    dueDateStart?: Date;
-    dueDateEnd?: Date;
     responsibleParty?: string;
   }): Promise<Obligation[]> {
     let query = db.select().from(obligations);
@@ -302,22 +299,9 @@ export class DatabaseStorage implements IStorage {
         }
       }
       
-      if (filters.type !== undefined && filters.type !== '') {
-        // Using type casting for enums
-        conditions.push(eq(obligations.type, filters.type as any));
-      }
-      
       if (filters.status !== undefined && filters.status !== '') {
         // Using type casting for enums
         conditions.push(eq(obligations.status, filters.status as any));
-      }
-      
-      if (filters.dueDateStart !== undefined) {
-        conditions.push(gte(obligations.due_date, filters.dueDateStart));
-      }
-      
-      if (filters.dueDateEnd !== undefined) {
-        conditions.push(lte(obligations.due_date, filters.dueDateEnd));
       }
       
       if (filters.responsibleParty !== undefined && filters.responsibleParty !== '') {
@@ -334,7 +318,7 @@ export class DatabaseStorage implements IStorage {
       }
     }
     
-    return query.orderBy(obligations.due_date);
+    return query.orderBy(obligations.id);
   }
 
   async getObligationsByDocument(documentId: number): Promise<Obligation[]> {
@@ -342,7 +326,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(obligations)
       .where(eq(obligations.document_id, documentId))
-      .orderBy(obligations.due_date);
+      .orderBy(obligations.id);
   }
 
   async createObligation(insertObligation: InsertObligation): Promise<Obligation> {
@@ -353,7 +337,6 @@ export class DatabaseStorage implements IStorage {
         created_at: new Date(),
         last_modified: new Date(),
         status: insertObligation.status || 'pending',
-        priority: insertObligation.priority || 'medium',
         created_by: insertObligation.created_by ?? null,
         modified_by: insertObligation.modified_by ?? null
       })
@@ -370,7 +353,6 @@ export class DatabaseStorage implements IStorage {
       created_at: new Date(),
       last_modified: new Date(),
       status: obligation.status || 'pending',
-      priority: obligation.priority || 'medium',
       created_by: obligation.created_by ?? null,
       modified_by: obligation.modified_by ?? null
     }));

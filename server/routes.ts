@@ -488,13 +488,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         filters.status = req.query.status as string;
       }
       
-      if (req.query.dueDateStart) {
-        filters.dueDateStart = new Date(req.query.dueDateStart as string);
-      }
-      
-      if (req.query.dueDateEnd) {
-        filters.dueDateEnd = new Date(req.query.dueDateEnd as string);
-      }
+      // Removed dueDateStart and dueDateEnd filters since due_date field was removed
       
       if (req.query.responsibleParty) {
         filters.responsibleParty = req.query.responsibleParty as string;
@@ -921,21 +915,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const obligations = await storage.getObligations();
       
-      // Count obligations by type
-      const typeCountsMap: Record<string, number> = {};
-      obligations.forEach(obligation => {
-        typeCountsMap[obligation.type] = (typeCountsMap[obligation.type] || 0) + 1;
-      });
-      
       // Count obligations by status
       const statusCountsMap: Record<string, number> = {};
       obligations.forEach(obligation => {
-        statusCountsMap[obligation.status] = (statusCountsMap[obligation.status] || 0) + 1;
+        if (obligation.status) {
+          statusCountsMap[obligation.status] = (statusCountsMap[obligation.status] || 0) + 1;
+        }
       });
       
       res.json({
         total: obligations.length,
-        typeCounts: typeCountsMap,
         statusCounts: statusCountsMap
       });
     } catch (error) {
@@ -949,15 +938,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.get('/api/analytics/deadlines', async (req: Request, res: Response) => {
     try {
-      const today = new Date();
-      const nextMonth = new Date();
-      nextMonth.setMonth(today.getMonth() + 1);
-      
-      // Get upcoming obligations with due dates
-      const obligations = await storage.getObligations({
-        dueDateStart: today,
-        dueDateEnd: nextMonth
-      });
+      // Since due_date field is removed, we just return all obligations
+      const obligations = await storage.getObligations();
       
       res.json({
         upcoming: obligations
