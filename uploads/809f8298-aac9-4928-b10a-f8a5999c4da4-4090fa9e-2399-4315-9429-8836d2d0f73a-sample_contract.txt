@@ -1,0 +1,78 @@
+COMMERCIAL AGREEMENT FOR SERVICE PROVISION
+
+BETWEEN:
+Acme Corporation ("Client")
+AND
+Global Services Ltd. ("Provider")
+
+EFFECTIVE DATE: March 25, 2025
+
+1. SCOPE OF SERVICES
+1.1 Provider agrees to provide the following services to Client:
+   (a) Software development and maintenance
+   (b) Technical support and troubleshooting
+   (c) System integration services
+
+2. TERM AND TERMINATION
+2.1 This Agreement shall commence on the Effective Date and continue for an initial term of 24 months.
+2.2 Provider must submit renewal terms in writing 90 days before expiration.
+2.3 Client may terminate this Agreement upon 30 days written notice if Provider fails to meet service levels.
+2.4 Provider shall deliver all final deliverables within 14 days of termination.
+
+3. PAYMENT TERMS
+3.1 Client shall pay Provider a monthly fee of $5,000, due within 30 days of invoice receipt.
+3.2 Late payments will incur interest at a rate of 1.5% per month.
+3.3 Provider shall submit detailed invoices on the 1st of each month.
+3.4 Client shall reimburse Provider for pre-approved expenses within 15 days of submission.
+
+4. PERFORMANCE STANDARDS
+4.1 Provider must maintain 99.9% uptime for all critical systems.
+4.2 Provider shall respond to critical issues within 2 hours and resolve within 8 hours.
+4.3 Provider must submit monthly performance reports by the 5th of the following month.
+4.4 Client will conduct quarterly reviews of Provider's performance.
+
+5. CONFIDENTIALITY
+5.1 All information shared during the course of this Agreement is deemed confidential.
+5.2 Provider shall implement appropriate safeguards to protect Client's data.
+5.3 Provider must notify Client within 24 hours of any data breach.
+5.4 Confidentiality obligations survive termination of this Agreement for 5 years.
+
+6. INTELLECTUAL PROPERTY
+6.1 All work product created by Provider shall be owned exclusively by Client.
+6.2 Provider shall execute any documents necessary to transfer IP rights to Client.
+6.3 Provider warrants that its services will not infringe on third-party IP rights.
+6.4 Provider must obtain written permission to use any third-party components.
+
+7. COMPLIANCE
+7.1 Provider shall comply with all applicable laws and regulations.
+7.2 Provider must maintain all necessary licenses and certifications.
+7.3 Provider shall submit compliance reports quarterly.
+7.4 Client has the right to audit Provider's compliance at reasonable times.
+
+8. INSURANCE
+8.1 Provider shall maintain professional liability insurance of at least $2,000,000.
+8.2 Provider must provide certificates of insurance annually.
+8.3 Provider shall name Client as an additional insured on all policies.
+8.4 Insurance coverage must be maintained throughout the term of the Agreement.
+
+9. DISPUTE RESOLUTION
+9.1 All disputes shall first be addressed through good faith negotiation.
+9.2 If negotiation fails, parties agree to binding arbitration.
+9.3 Arbitration must be initiated within 30 days of dispute notification.
+9.4 The prevailing party shall be entitled to recover reasonable attorney's fees.
+
+10. MISCELLANEOUS
+10.1 This Agreement constitutes the entire understanding between the parties.
+10.2 Any modifications must be in writing and signed by both parties.
+10.3 Provider may not assign this Agreement without Client's written consent.
+10.4 Notices must be in writing and delivered by registered mail or email with confirmation.
+
+IN WITNESS WHEREOF, the parties have executed this Agreement as of the Effective Date.
+
+______________________________
+Acme Corporation
+By: John Smith, CEO
+
+______________________________
+Global Services Ltd.
+By: Sarah Johnson, Managing Director
