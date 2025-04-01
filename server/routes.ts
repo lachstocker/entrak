@@ -486,6 +486,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (req.query.responsibleParty) {
         filters.responsibleParty = req.query.responsibleParty as string;
       }
+
+      if (req.query.isRecurring !== undefined) {
+        filters.isRecurring = req.query.isRecurring === 'true';
+      }
       
       const obligations = await storage.getObligations(filters);
       
