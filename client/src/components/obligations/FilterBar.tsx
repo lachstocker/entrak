@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Download, X, Check } from 'lucide-react';
+import { Download, X, Check, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -15,8 +15,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { FilterState } from '@/types';
-import { OBLIGATION_STATUSES, RESPONSIBLE_PARTIES } from '@/constants';
+import { OBLIGATION_STATUSES } from '@/constants';
 import { useProjects } from '@/hooks/useProjects';
+import { useResponsibleParties } from '@/hooks/useResponsibleParties';
 
 interface FilterBarProps {
   onFilterChange: (filters: FilterState) => void;
@@ -32,6 +33,7 @@ const FilterBar: React.FC<FilterBarProps> = ({
   obligations 
 }) => {
   const { projects, isLoading: isLoadingProjects } = useProjects();
+  const { responsibleParties, isLoading: isLoadingParties } = useResponsibleParties();
   
   // Maintain internal state for filters
   const [internalFilters, setInternalFilters] = useState<FilterState>({
@@ -186,9 +188,18 @@ const FilterBar: React.FC<FilterBarProps> = ({
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">All Responsible Parties</SelectItem>
-          {RESPONSIBLE_PARTIES.map(party => (
-            <SelectItem key={party.value} value={party.value}>{party.label}</SelectItem>
-          ))}
+          {isLoadingParties ? (
+            <div className="flex items-center justify-center py-2">
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              <span>Loading...</span>
+            </div>
+          ) : responsibleParties.length > 0 ? (
+            responsibleParties.map(party => (
+              <SelectItem key={party.value} value={party.value}>{party.label}</SelectItem>
+            ))
+          ) : (
+            <SelectItem value="none" disabled>No responsible parties found</SelectItem>
+          )}
         </SelectContent>
       </Select>
 

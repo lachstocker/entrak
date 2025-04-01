@@ -11,8 +11,11 @@ import {
   insertObligationSchema, 
   insertReminderSchema,
   insertUserSchema,
-  insertProjectSchema
+  insertProjectSchema,
+  obligations
 } from "@shared/schema";
+import { sql } from "drizzle-orm";
+import { db } from "./db";
 import { 
   extractObligations, 
   analyzeSpecificObligation, 
@@ -467,6 +470,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         projectId?: number;
         status?: string;
         responsibleParty?: string;
+        isRecurring?: boolean;
       } = {};
       
       if (req.query.documentId) {
@@ -611,6 +615,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('Error creating batch obligations:', error);
       res.status(500).json({ 
         message: 'Failed to create batch obligations',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+  
+  // Endpoint to get all unique responsible parties from obligations
+  app.get('/api/obligations/responsible-parties', async (req: Request, res: Response) => {
+    try {
+      // Get all unique responsible parties from the database
+      const result = await db
+        .selectDistinct({ responsibleParty: obligations.responsible_party })
+        .from(obligations)
+        .where(sql`${obligations.responsible_party} IS NOT NULL`)
+        .orderBy(obligations.responsible_party);
+      
+      // Extract just the string values
+      const responsibleParties = result
+        .map(item => item.responsibleParty)
+        .filter(Boolean); // Remove any null/undefined values
+      
+      res.json(responsibleParties);
+    } catch (error) {
+      console.error('Error fetching responsible parties:', error);
+      res.status(500).json({ 
+        message: 'Failed to fetch responsible parties',
         error: error instanceof Error ? error.message : 'Unknown error'
       });
     }
